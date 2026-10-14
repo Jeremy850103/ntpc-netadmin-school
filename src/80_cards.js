@@ -27,3 +27,10 @@
     ['speed', '測速：三個數字', '下載和上傳的單位是 Mbps，越大越快。延遲（Ping）的單位是 ms，越小反應越快。光纖到班之後教室端到副控是 10G、教室電腦埠是 2.5G，教室電腦測到雷達應接近網卡速度。智慧網管「測速成果」報表記錄各校骨幹測速。', '視訊上課常常聲音延遲、對不上嘴，最該看哪個數字？', ['下載速度', '延遲（Ping）', '上傳速度'], 1, '對。即時互動最怕延遲和抖動。下載再快，延遲高一樣卡。'],
     ['ping', 'ping 的順序與清除 DNS 暫存', 'ping 由近到遠：先 ping 127.0.0.1 確認本機，再 ping 閘道（校端 L3 或該棟副控），再 ping 外面的 IP（8.8.8.8），最後 ping 網址（DNS）。哪一步不通，問題就在那一段。DNS 改好之後，電腦可能還記著舊的查詢結果，執行 ipconfig /flushdns 清掉暫存再試。', '閘道和 8.8.8.8 都 ping 得通，只有 ping 網址不通，接下來最該查什麼？', ['網路線', 'DNS 設定', '教室端的 VLAN'], 1, '對。IP 會通、網址不通，就是 DNS。改好 DNS 之後，記得 ipconfig /flushdns。']
   ];
+  const CARD_GROUPS = [
+    ['新北的校園網路', ['naming', 'addr', 'schemes', 'sla', 'line']],
+    ['線路與設備', ['psu', 'ecmp', 'snmp', 'backup']],
+    ['位址與路由', ['l3sub', 'relay', 'nat', 'cidr', 'bin', 'special', 'ipv6', 'ping']],
+    ['智慧網管與測速', ['nmsip', 'nmsalarm', 'radar', 'speed']],
+    ['網路基礎', ['pmac', 'tcp', 'ssh', 'https', 'vpn']]
+  ];

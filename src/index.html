@@ -14,20 +14,21 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>新北網管小學堂：光纖到班接線大作戰</h1>
-    <span class="lvl" id="lvl"></span>
+    <div class="hrow"><h1>新北網管小學堂：光纖到班接線大作戰</h1><span class="reqprog" id="reqprog"></span><button id="helpBtn" class="help" aria-label="怎麼玩" title="怎麼玩">？</button></div>
+    <p class="byline">新北市政府教育局 × 顯赫資訊　校園網路管理互動課程　<span class="lvl" id="lvl"></span></p>
   </header>
-  <p class="byline">新北市政府教育局 × 顯赫資訊　校園網路管理互動課程</p>
   <div class="who" id="who" aria-live="polite" hidden></div>
   <div id="teach" hidden></div>
-  <div class="osi" id="osi" aria-label="這一關練習的 OSI 層"></div>
-  <div class="tools" id="tools"></div>
-  <p class="toolnote" id="toolnote" hidden></p>
+  <div class="topbar">
+    <div class="osi" id="osi" aria-label="這一關練習的 OSI 層"></div>
+    <details class="toolbox" id="toolbox"><summary id="toolsum">工具箱</summary><div class="tools" id="tools"></div><p class="toolnote" id="toolnote" hidden></p></details>
+  </div>
   <div class="viewbar" id="viewbar" aria-live="polite" hidden></div>
 
   <div class="play">
     <div class="main">
-      <div class="stage">
+      <div class="nav" id="nav"></div>
+      <div class="stage" id="stage">
         <svg id="board" role="application" aria-label="配線畫面：拖曳設備，從連接埠拉出網路線"></svg>
         <div class="status" id="status" aria-live="polite"></div>
         <div class="acts" id="acts" hidden></div>
@@ -51,18 +52,22 @@
     <div class="side">
       <div class="box">
         <h2 id="task"></h2>
-        <p id="intro"></p>
+        <p id="intro" class="clamp"></p>
+        <button id="introMore" class="more mobile-only" type="button">展開全文</button>
         <p class="glnote">有底線的字可以點開看一行解釋。</p>
         <ul class="goal" id="goals"></ul>
         <div class="inv" id="inv" aria-label="剩餘線材"></div>
         <div class="kinds" id="kinds" hidden></div>
       </div>
 
-      <div class="btns">
+      <div class="btns main-btn">
         <button class="go" id="test">測試連線</button>
+      </div>
+      <div class="btns sub-btn">
         <button id="hintBtn">提示</button>
         <button id="demo">看示範</button>
         <button id="reset">重來</button>
+        <button id="zoomBtn" class="mobile-only" type="button">放大舞台</button>
       </div>
       <p class="hint" id="hint" hidden></p>
 
@@ -82,7 +87,7 @@
   </div>
 
   <h2 class="road-h">闖關路線</h2>
-  <p class="progrow"><span id="prog"></span><button id="wipe">清除紀錄</button></p>
+  <p class="progrow"><button id="nextReq" class="go-req">繼續：下一個必修關</button><span id="prog"></span><button id="wipe">清除紀錄</button></p>
   <p class="progrow">必修 14 關約 90 分鐘：序章四關、每章的報修單、智慧網管前兩關、SOP 總驗收與畢業任務。標「進階」的關卡講原理與接線，有空再做。</p>
   <p class="progrow"><button id="disp">隨機派工：抽一張報修單</button><span id="disptext"></span><span id="dispn"></span></p>
   <div id="road"></div>
@@ -93,6 +98,22 @@
   <p class="progrow foot">新北網管小學堂　新北市政府教育局指導、顯赫資訊股份有限公司製作（2026）。本課程程式架構沿用「網管小學堂：接線大作戰」（辛文義／米立方智慧科技，MIT 授權）；關卡劇本、設備圖與文字為本課程重新撰寫。課程內容供新北市所屬學校教學訓練使用。</p>
 </div>
 <div id="printcard"></div>
+<div id="welcome" class="welcome" hidden>
+  <div class="wbox" role="dialog" aria-labelledby="wtitle">
+    <h2 id="wtitle">歡迎來到新北網管小學堂</h2>
+    <p>用光纖到班完工後的校園網路當場景，一關一個情境，學會老師打電話來說「不能上網」時先看哪裡、找誰處理。</p>
+    <ol>
+      <li>畫面左邊是機櫃與教室：拖設備、從埠拉線、點設備看選單。</li>
+      <li>右邊是任務單：做完按「測試連線」，不通的話看下方終端機和提示。</li>
+      <li>卡住了按「看示範」，它會一步一步做給你看；有底線的字可以點開看解釋。</li>
+    </ol>
+    <div class="btns">
+      <button class="go" id="wStart">新手：從必修第一關開始</button>
+      <button id="wClose">我自己選關卡</button>
+    </div>
+    <p class="wnote">必修 14 關約 90 分鐘。之後按右上角「？」可以再看這一頁。</p>
+  </div>
+</div>
 <div id="gltip" hidden></div>
 <script>
 (function(){

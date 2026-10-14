@@ -1575,6 +1575,7 @@
       saveProg();
       road();
       bars();
+      navBar();
       track({
         t: 'win',
         lv: li,
@@ -2041,12 +2042,15 @@
   });
 
   function road() {
-    $('road').innerHTML = ROAD.map(c => `<h3 class="chap-h">${c[0]}</h3><ol class="road">` + c[1].map(r => {
-      const n = PROG.lv[r[2]] || 0;
-      const now = r[2] === li && !DISP;
-      const req = REQUIRED.includes(r[2]);
-      return `<li class="${now?'now':''}${req?' req':''}"><button data-lv="${r[2]}"><span>${r[0]} · ${now?'進行中':n?'<b>'+'★'.repeat(n)+'</b>'+'☆'.repeat(3-n):'還沒過'}</span>${r[1]}<em>${req?'必修':'進階'}</em></button></li>`
-    }).join('') + '</ol>').join('');
+    $('road').innerHTML = ROAD.map(c => {
+      const done = c[1].filter(r => PROG.lv[r[2]]).length, tot = c[1].length;
+      return `<div class="chap-h"><h3>${c[0]}</h3><span class="chap-p"><i style="width:${Math.round(done/tot*100)}%"></i></span><small>已過 ${done} / ${tot}</small></div><ol class="road">` + c[1].map(r => {
+        const n = PROG.lv[r[2]] || 0;
+        const now = r[2] === li && !DISP;
+        const req = REQUIRED.includes(r[2]);
+        return `<li class="${now?'now':''}${req?' req':n?' done':''}"><button data-lv="${r[2]}"><span>${r[0]} · ${req?'必修':'進階'}${now?' · 進行中':''}<b>${n?'★'.repeat(n)+'☆'.repeat(3-n):''}</b></span>${r[1]}</button></li>`
+      }).join('') + '</ol>'
+    }).join('');
     summary();
   }
   $('road').onclick = e => {
@@ -2087,6 +2091,8 @@
     $('tip').innerHTML = gl(LV.tip);
     $('demo').hidden = !DEMO_SOL[LV.key];
     DEMO = false;
+    $('intro').classList.add('clamp');
+    $('introMore').textContent = '展開全文';
     $('see').hidden = !LV.see;
     $('see').innerHTML = LV.see ? '<h2>相關的知識卡</h2><div class="btns">' + LV.see.map(k => {
       const c = CARDS.find(x => x[0] === k);
@@ -2280,8 +2286,49 @@
     $('osi').hidden = DISP;
     const on = osiOf(LV);
     $('osi').innerHTML = OSI.map((n, i) => `<span class="${on.includes(i+1)?'on':''}">${n}</span>`).join('');
-    $('tools').innerHTML = '<b>工具箱</b>' + TOOLS.map((t, i) => `<button data-t="${i}" class="${PROG.lv[t[1]]?'':'lock'}">${t[0]}${PROG.lv[t[1]]?'':'（未解鎖）'}</button>`).join('');
+    const got = TOOLS.filter(t => PROG.lv[t[1]]).length;
+    $('toolsum').textContent = `工具箱 ${got} / ${TOOLS.length}`;
+    $('tools').innerHTML = TOOLS.map((t, i) => [i, t]).sort((a, b) => (PROG.lv[b[1][1]] ? 1 : 0) - (PROG.lv[a[1][1]] ? 1 : 0)).map(([i, t]) => `<button data-t="${i}" class="${PROG.lv[t[1]]?'':'lock'}">${t[0]}${PROG.lv[t[1]]?'':'（未解鎖）'}</button>`).join('');
+    navBar()
   }
+  // 關卡導覽列：上一關／本章進度點／下一關／下一個必修
+  const nextReqNo = () => REQUIRED.find(n => !PROG.lv[n]);
+  function navBar() {
+    const v = $('nav'), i = PLAY.indexOf(li), chap = ROAD.find(c => c[1].some(r => r[2] === li));
+    if (!chap || DISP) { v.hidden = true; return }
+    v.hidden = false;
+    const dots = chap[1].map(r => `<i class="${r[2]===li?'now':PROG.lv[r[2]]?'done':''}" title="${esc(r[0]+' '+r[1])}"></i>`).join('');
+    const nr = nextReqNo();
+    v.innerHTML = `<button data-n="prev" ${i<=0?'disabled':''}>‹ 上一關</button><span class="navmid"><b>${esc(chap[0].split('　')[0])}</b> ${esc(LV.id)} ${esc(sp(LV.name))}<span class="dots">${dots}</span></span>` +
+      (nr != null && nr !== li ? `<button data-n="req" class="req">下一個必修 ›</button>` : '') + `<button data-n="next" ${i<0||i+1>=PLAY.length?'disabled':''}>下一關 ›</button>`
+  }
+  $('nav').onclick = e => {
+    const b = e.target.closest('button[data-n]');
+    if (!b || busy || replaying || VIEW) return;
+    const i = PLAY.indexOf(li), k = b.dataset.n;
+    const to = k === 'prev' ? PLAY[i - 1] : k === 'next' ? PLAY[i + 1] : nextReqNo();
+    if (to == null) return;
+    load(to);
+    window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' })
+  };
+  $('nextReq').onclick = () => { const n = nextReqNo(); if (n == null || busy || replaying) return; load(n); window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' }) };
+  // 手機版：任務說明預設三行，按一下展開
+  $('introMore').onclick = () => { const c = $('intro').classList.toggle('clamp'); $('introMore').textContent = c ? '展開全文' : '收合' };
+  $('zoomBtn').onclick = () => { const z = $('stage').classList.toggle('zoom'); $('zoomBtn').textContent = z ? '縮回舞台' : '放大舞台'; try { localStorage.setItem('nq-zoom', z ? '1' : '0') } catch (e) {} };
+  try { if (localStorage.getItem('nq-zoom') === '1') { $('stage').classList.add('zoom'); $('zoomBtn').textContent = '縮回舞台' } } catch (e) {}
+  // 首次進入引導
+  function welcome(show) {
+    const w = $('welcome');
+    if (show) { w.hidden = false; return }
+    let seen = false;
+    try { seen = localStorage.getItem('nq-welcome') === '1' } catch (e) {}
+    w.hidden = seen || location.hash.startsWith('#rec=') || TEACH
+  }
+  const welcomeDone = () => { $('welcome').hidden = true; try { localStorage.setItem('nq-welcome', '1') } catch (e) {} };
+  $('wClose').onclick = welcomeDone;
+  $('wStart').onclick = () => { welcomeDone(); if (!busy && !replaying) load(lvk('words').no); window.scrollTo({ top: 0, behavior: 'auto' }) };
+  $('helpBtn').onclick = () => welcome(true);
+  $('welcome').addEventListener('click', e => { if (e.target === $('welcome')) welcomeDone() });
   $('tools').onclick = e => {
     const b = e.target.closest('button[data-t]');
     if (!b) return;
@@ -2307,7 +2354,11 @@
   };
   // 選項每次隨機排列；data-o 保留原始索引，用來比對答案
   function cards() {
-    $('cards').innerHTML = CARDS.map((c, i) => `<details class="card"><summary>${c[1]}<span class="ck">${PROG.cd[c[0]]?'已答對':''}</span></summary><p>${c[2]}</p><p class="q">${c[3]}</p><div class="btns">${c[4].map((o,j)=>[Math.random(),j,o]).sort((x,y)=>x[0]-y[0]).map(([,j,o])=>`<button data-c="${i}" data-o="${j}">${o}</button>`).join('')}</div><p class="fb" id="fb-${i}" aria-live="polite"></p></details>`).join('')
+    const one = (c, i) => `<details class="card${PROG.cd[c[0]]?' ok':''}"><summary>${PROG.cd[c[0]]?'✓ ':''}${c[1]}<span class="ck">${PROG.cd[c[0]]?'已答對':''}</span></summary><p>${c[2]}</p><p class="q">${c[3]}</p><div class="btns">${c[4].map((o,j)=>[Math.random(),j,o]).sort((x,y)=>x[0]-y[0]).map(([,j,o])=>`<button data-c="${i}" data-o="${j}">${o}</button>`).join('')}</div><p class="fb" id="fb-${i}" aria-live="polite"></p></details>`;
+    $('cards').innerHTML = CARD_GROUPS.map(g => {
+      const items = g[1].map(k => CARDS.findIndex(c => c[0] === k)).filter(i => i >= 0), done = items.filter(i => PROG.cd[CARDS[i][0]]).length;
+      return `<div class="cgrp"><h3>${g[0]}<small>${done} / ${items.length}</small></h3><div class="cgrid">${items.map(i => one(CARDS[i], i)).join('')}</div></div>`
+    }).join('')
   }
   $('cards').onclick = e => {
     const b = e.target.closest('button[data-c]');
@@ -2325,6 +2376,8 @@
         card: c[0]
       });
       b.closest('details').querySelector('.ck').textContent = '已答對';
+      b.closest('details').classList.add('ok');
+      const g = b.closest('.cgrp'); if (g) { const n = g.querySelectorAll('details.ok').length, m = g.querySelectorAll('details').length; g.querySelector('h3 small').textContent = `${n} / ${m}` }
       summary()
     }
   };
@@ -2335,7 +2388,9 @@
       st = Object.values(PROG.lv).reduce((a, b) => a + b, 0),
       cd = Object.keys(PROG.cd).length;
     const rq = REQUIRED.filter(n => PROG.lv[n]).length;
-    $('prog').textContent = `必修 ${rq} / ${REQUIRED.length}　全部 ${lv} / ${LEVELS.length} 關　星星 ${st} / ${LEVELS.length*3}　知識卡 ${cd} / ${CARDS.length}`
+    $('prog').textContent = `必修 ${rq} / ${REQUIRED.length}　全部 ${lv} / ${LEVELS.length} 關　星星 ${st} / ${LEVELS.length*3}　知識卡 ${cd} / ${CARDS.length}`;
+    $('reqprog').textContent = `必修 ${rq} / ${REQUIRED.length}`;
+    $('nextReq').hidden = nextReqNo() == null
   }
   addEventListener('afterprint', () => document.body.classList.remove('pc'));
   let armed = 0;
@@ -3247,6 +3302,7 @@
   setSchool(mySchool());
   load(st);
   openLink();
+  welcome(false);
   if (API && new URLSearchParams(location.search).get('join') && !WHO) whoMode = 'join';
   if (!TEACH) {
     whoBar();
@@ -3257,4 +3313,4 @@
     if (m !== mode && !busy) layout(m)
   }).observe(svg.parentElement);
   // 自動測試鉤子：守門腳本用它逐關重播解法；一般使用不會碰到
-  window.__nq = { load, apply, lvk, LEVELS, ROAD, CARDS, get won() { return won }, get li() { return li }, get busy() { return busy }, get fails() { return fails }, D: () => D, LV: () => LV, S, cables: () => cables };
+  window.__nq = { load, apply, lvk, LEVELS, ROAD, CARDS, CARD_GROUPS, REQUIRED, PLAY, get won() { return won }, get li() { return li }, get busy() { return busy }, get fails() { return fails }, D: () => D, LV: () => LV, S, cables: () => cables };

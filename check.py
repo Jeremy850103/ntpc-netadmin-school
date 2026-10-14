@@ -12,7 +12,7 @@ from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
     b = p.chromium.launch(); pg = b.new_page()
     pg.goto('file://' + os.path.join(H, '出稿', '新北網管小學堂.html'), wait_until='load')
-    info = pg.evaluate("""()=>{const nq=window.__nq; return {levels: nq.LEVELS.map(l=>({key:l.key,no:l.no,name:l.name,task:l.task,hints:(l.hints||[]).length,learn:(l.learn||[]).length,tip:!!l.tip,goals:(l.goals||[]).length,see:l.see||[],hasIntro:!!(l.intro||l.init),start:!!l.start})), road: nq.ROAD.flatMap(c=>c[1].map(r=>r[2])), cards: nq.CARDS.map(c=>c[0])}}""")
+    info = pg.evaluate("""()=>{const nq=window.__nq; return {levels: nq.LEVELS.map(l=>({key:l.key,no:l.no,name:l.name,task:l.task,hints:(l.hints||[]).length,learn:(l.learn||[]).length,tip:!!l.tip,goals:(l.goals||[]).length,see:l.see||[],hasIntro:!!(l.intro||l.init),start:!!l.start})), road: nq.ROAD.flatMap(c=>c[1].map(r=>r[2])), cards: nq.CARDS.map(c=>c[0]), groups: nq.CARD_GROUPS.flatMap(g=>g[1])}}""")
     b.close()
 L = info['levels']; keys = [l['key'] for l in L]; nos = [l['no'] for l in L]
 if len(set(keys)) != len(keys) or len(set(nos)) != len(nos): bad.append('B key/no 重複')
@@ -23,6 +23,10 @@ for l in L:
     if probs: bad.append(f"B {l['key']} 缺 {probs}")
     for s in l['see']:
         if s not in info['cards']: bad.append(f"B {l['key']} 引用不存在的知識卡 {s}")
+from collections import Counter
+gc = Counter(info['groups'])
+dup = [k for k, v in gc.items() if v > 1]; nog = [c for c in info['cards'] if c not in gc]; ghost = [c for c in gc if c not in info['cards']]
+if dup or nog or ghost: bad.append(f'B 知識卡分組 重複{dup} 未分組{nog} 不存在{ghost}')
 print(f'【B】關卡 {len(L)} 關、知識卡 {len(info["cards"])} 張、路線 {len(info["road"])} 關', 'ok' if not [x for x in bad if x.startswith('B')] else 'FAIL')
 # C：文風禁詞（自我評價、辯護式對比、流行語）；教學敘事保留口語
 STYLE_BAD = ['不是口號', '不是示意圖', '誠實', '可辯護', '業界領先', '最佳', '唯一', '獨步', '而不是', '不是只', '並非只', '賦能', '閉環', '抓手', '打法', '痛點', '超強', '革命性', '顛覆']
