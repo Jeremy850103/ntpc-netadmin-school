@@ -58,7 +58,7 @@
         const ok = this.web(), H = '從報修電腦開啟網頁', lines = [ok ? '<span class="o">www.google.com：成功</span>' : '<span class="x">www.google.com：無法連線</span>'];
         if (!ok && D.l3.cfg.end === GW && !D.e1.noip) return { ok: false, head: H, lines, msg: `DHCP 範圍設到 ${GW}，那是閘道自己的位址。發到它的電腦會跟閘道撞號。範圍要照交接筆記設定。` };
         if (ok && D.sw.ports.p2.vlan === 99) return { ok: false, head: H, lines, msg: '報修電腦好了，可是 P2 被改到 VLAN 99，隔壁電腦反而斷線了。只改有問題的那一埠。' };
-        return ok ? { ok: true, head: H, lines: lines.concat(RULENOTE(D.l3.cfg)) } : { ok: false, free: true, head: H, lines, msg: '還是不能上網。照 SOP 由下往上：連線燈、ipconfig、ping 閘道、ping 外面、ping 網址。' }
+        return ok ? { ok: true, head: H, lines: lines.concat(RULENOTE(D.l3.cfg)) } : { ok: false, free: true, head: H, lines, msg: '還是不能上網。照 SOP 由下往上：連線燈、ipconfig、ping 閘道、ping 外面、ping 網址。', at: 'e1' }
       },
       goals: [['找出原因並排除', () => lvk('7-1').web()]],
       extra: '每一步先確認再動手',

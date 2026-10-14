@@ -273,6 +273,20 @@ button:disabled{opacity:.5;cursor:default}
 .nms-card .tagt{fill:var(--ink)}
 .dev .pwr.psu1,.dev .pwr.psu2{fill:var(--ok)} .dev.psu1off .pwr.psu1,.dev.psu2off .pwr.psu2{fill:var(--led-off)}
 
+/* 術語底線與浮動解釋 */
+.gl{border-bottom:1.5px dotted var(--cable);cursor:help;color:inherit}
+.gl:hover,.gl:focus-visible{background:color-mix(in srgb,var(--cable) 14%,transparent);outline:none}
+#gltip{position:absolute;z-index:50;max-width:330px;background:var(--surface);color:var(--ink);border:1px solid var(--cable);border-radius:6px;padding:8px 12px;font-size:.88rem;line-height:1.5;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+#gltip b{color:var(--cable);margin-right:4px}
+.glnote{font-size:.78rem;color:var(--muted);margin-top:4px}
+/* 答錯時卡住的那一台 */
+@keyframes stuckpulse{50%{opacity:.35}}
+.dev.stuck>.body,.dev.stuck>.ear,.dev.stuck>.plate{stroke:var(--bad);stroke-width:4;animation:stuckpulse .6s ease-in-out 6}
+/* 路線圖必修／進階 */
+.road li em{display:inline-block;font-style:normal;font-size:.68rem;margin-left:6px;padding:0 6px;border-radius:999px;border:1px solid var(--line);color:var(--muted);vertical-align:1px}
+.road li.req em{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.road li.req{border-style:solid;border-color:var(--device-edge)}
+
 </style>
 </head>
 <body>
@@ -316,6 +330,7 @@ button:disabled{opacity:.5;cursor:default}
       <div class="box">
         <h2 id="task"></h2>
         <p id="intro"></p>
+        <p class="glnote">有底線的字可以點開看一行解釋。</p>
         <ul class="goal" id="goals"></ul>
         <div class="inv" id="inv" aria-label="剩餘線材"></div>
         <div class="kinds" id="kinds" hidden></div>
@@ -324,6 +339,7 @@ button:disabled{opacity:.5;cursor:default}
       <div class="btns">
         <button class="go" id="test">測試連線</button>
         <button id="hintBtn">提示</button>
+        <button id="demo">看示範</button>
         <button id="reset">重來</button>
       </div>
       <p class="hint" id="hint" hidden></p>
@@ -345,6 +361,7 @@ button:disabled{opacity:.5;cursor:default}
 
   <h2 class="road-h">闖關路線</h2>
   <p class="progrow"><span id="prog"></span><button id="wipe">清除紀錄</button></p>
+  <p class="progrow">必修 14 關約 90 分鐘：序章四關、每章的報修單、智慧網管前兩關、SOP 總驗收與畢業任務。標「進階」的關卡講原理與接線，有空再做。</p>
   <p class="progrow"><button id="disp">隨機派工：抽一張報修單</button><span id="disptext"></span><span id="dispn"></span></p>
   <div id="road"></div>
 
@@ -354,6 +371,7 @@ button:disabled{opacity:.5;cursor:default}
   <p class="progrow foot">新北網管小學堂　新北市政府教育局指導、顯赫資訊股份有限公司製作（2026）。本課程程式架構沿用「網管小學堂：接線大作戰」（辛文義／米立方智慧科技，MIT 授權）；關卡劇本、設備圖與文字為本課程重新撰寫。課程內容供新北市所屬學校教學訓練使用。</p>
 </div>
 <div id="printcard"></div>
+<div id="gltip" hidden></div>
 <script>
 (function(){
 /* ===== 01_head.js ===== */
@@ -845,10 +863,123 @@ button:disabled{opacity:.5;cursor:default}
   const FIBER_KIND = { fiber: { name: 'OS2 單模光纖', note: '兩端 LR 模組已裝', far: '10 公里', max: 10000, cost: '', media: 'sfp', direct: true, sw: 'lr' } };
   const FIBER_UTP_KINDS = { utp: { name: 'Cat6 網路線', max: 100, far: '100 公尺', cost: '$', media: 'rj' }, ...FIBER_KIND };
 
+  /* ===== 術語白話表：關卡文字第一次出現時可點開一行解釋 ===== */
+  const GLOSSARY = {
+    '光纖': '用玻璃纖維傳光訊號的線，不怕距離遠、不怕電磁干擾。本案教室到副控、副控到核心都是光纖。',
+    '單模光纖': '芯很細的光纖，配 LR 模組可以跑 10 公里。本案全校都用這種（OS2）。',
+    '多模光纖': '芯比較粗的光纖，配 SR 模組只能跑幾百公尺。本案不佈多模。',
+    '光模組': '插在交換器 SFP+ 插槽裡的小盒子，把電訊號變成光。兩端要同一種。',
+    'LR 模組': '10GBASE-LR，配單模光纖的 10G 光模組，本案三層共用。',
+    'SFP+': '交換器上給光模組或 DAC 插的黃框插槽，速度 10G。',
+    'SFP28': '和 SFP+ 長得一樣的插槽，但可以跑到 25G。新核心有 16 個。',
+    'QSFP28': '比較大的插槽，可以跑 100G，或用分接線拆成 4 個 25G。',
+    'DAC': '兩頭自帶接頭的 10G 銅纜，不用光模組，只能接 3 公尺內，適合同一個機櫃。',
+    '皮纜': '埋在管路裡、連到每間教室的 4 芯光纖。2 芯在線、2 芯備援。',
+    '壁掛收容盒': '教室牆上的小盒子，皮纜在這裡收尾，用跳線接教室端交換器。',
+    '光纖終端箱': '副控機櫃裡收皮纜另一頭的箱子，每一埠對一間教室。',
+    'PoE': '用網路線順便送電，AP、攝影機、IP 電話不用另外插電。',
+    '802.3at': 'PoE 的一種規格，單一埠最多 30 W。',
+    '交換器': '把一群設備接在一起的盒子，看 MAC 位址決定往哪一埠送。',
+    '教室端交換器': '每間教室壁掛箱裡的那台，8 個埠接電腦與 AP，光纖上行回副控。',
+    '副控': '每棟一台的交換器，收容該棟每間教室的光纖，也是這一棟的閘道。',
+    '副控點交換器': '每棟一台的交換器，收容該棟每間教室的光纖，也是這一棟的閘道。',
+    '核心': '主機房那台最大的交換器，各棟副控的光纖都集中到它，再接校端 L3。',
+    '核心光纖交換器': '主機房那台最大的交換器，各棟副控的光纖都集中到它，再接校端 L3。',
+    '校端 L3': '學校原有的 Juniper 路由器，各網段的閘道、DHCP 與對教育局的線路都在它身上。',
+    '校端 L3 路由器': '學校原有的 Juniper 路由器，各網段的閘道、DHCP 與對教育局的線路都在它身上。',
+    'L3': '第三層，看 IP 位址決定封包往哪裡送。路由器和副控都做這件事。',
+    'L2': '第二層，看 MAC 位址在同一個網段裡轉送。交換器做這件事。',
+    'VLAN': '把一台交換器切成幾個互不相通的隔間，像在同一棟樓裡隔出不同辦公室。',
+    'Trunk': '同時載運好幾個 VLAN 的埠，交換器之間、接 AP 的埠都要設成它。',
+    'IP': '設備在網路上的門牌，例如 10.213.250.60。',
+    'IP 位址': '設備在網路上的門牌，例如 10.213.250.60。',
+    '閘道': '這個網段通往外面的大門，電腦要送到別的網段時就交給它。',
+    '子網路遮罩': '劃出同一個社區的範圍，前面幾段相同的 IP 才是鄰居。',
+    'DHCP': '電腦開機時自動幫它領門牌的服務，不用一台一台手動設。',
+    'DHCP Relay': '副控把教室的領門牌請求轉送到校端 L3，因為廣播出不了棟。',
+    'DHCP Snooping': '教室端只相信上行埠送來的門牌，私接的分享器發的假門牌會被丟掉。',
+    'DNS': '查號台，把網址換成 IP。',
+    'ARP': '查某個 IP 現在是哪張網卡在用的機制，指令是 arp -a。',
+    'MAC': '網卡出廠就燒好的身分證，例如 3c-52-82-1a-9f-04。',
+    'MAC 位址': '網卡出廠就燒好的身分證，例如 3c-52-82-1a-9f-04。',
+    'ECMP': '兩條上行同時用，一條斷了另一條馬上接手。',
+    'ACL': '存取控制清單，決定哪些來源可以連到哪些服務。',
+    'SSID': '無線網路的名字，例如 YHPS-Teacher。',
+    '告警': '智慧網管偵測到異常時發出的通知，例如離線、IP 衝突、Port Loop。',
+    '拓樸': '智慧網管自動畫出來的設備連接圖，離線的設備會標紅框。',
+    '拓樸圖': '智慧網管自動畫出來的設備連接圖，離線的設備會標紅框。',
+    '雷達': '校內測速主機，教室電腦用瀏覽器連上就能量校內網路品質。',
+    'Radar': '校內測速主機，教室電腦用瀏覽器連上就能量校內網路品質。',
+    'CRC Error': '封包傳到一半壞掉的次數，多半是線路或模組品質問題。',
+    'Port Loop': '兩台交換器之間多接了一條線繞成圈，廣播封包不停打轉。',
+    '廣播風暴': '迴圈造成的廣播封包不停繞圈，把全校頻寬吃光。',
+    'STP': '交換器自動擋掉迴圈的機制。',
+    'SNMP': '智慧網管定時問設備狀態與流量用的協定。',
+    'UPS': '不斷電系統，停電時撐住設備幾十分鐘。',
+    'dBm': '無線訊號強度的單位，越接近 0 越強，-65 以上才穩。',
+    '基準線': '這一段線路平常 7 天的平均表現，今天差很多就是退化。',
+    '盤點計畫': '智慧網管裡各校自己登錄設備資料的表，教育局拿來規劃汰換。'
+  };
+
 /* ===== 10_ch0.js ===== */
   /* ===== 關卡資料 ===== */
   const LEVELS = [
     /* ===== 序章 ===== */
+    {
+      key: 'words', no: 39, id: '詞彙', chap: CH0, osi: [], sh: false,
+      name: '十個會聽到的字',
+      task: '任務：先認識十個接手後一定會聽到的字',
+      min: 0, max: 0, s2: 'first', firstLabel: '一次就全部答對', testLabel: '對答案', goalLast: '按下「對答案」',
+      idle: '點一個字，這裡會顯示它的白話解釋，再選它最像什麼',
+      intro: '廠商、教育網路中心、智慧網管的告警，都會用這十個字跟你說話。不用背定義，先知道每個字在講哪一層、像生活裡的什麼。之後每一關的文字裡，有底線的字都可以點開看解釋。',
+      start: '點每一個字，讀一行解釋，再選「它最像什麼」。十個都選好，按「對答案」。',
+      devs: (() => { const o = { l3: L3(), core: CORE(), aggr: AGGR('B'), sw: EDGE() }; for (let i = 1; i <= 10; i++) o['e' + i] = WDEV('', ''); return o })(),
+      fixed: SWFIX(),
+      lay: {
+        wide: { W: 900, H: 560, net: { x: 226, y: 44 }, rack: { x: 40, y: 98, w: 372, h: 424 }, pos: { l3: [60, 108], core: [60, 208], aggr: [60, 308], sw: [60, 408], e1: [440, 100], e2: [555, 100], e3: [670, 100], e4: [785, 100], e5: [440, 240], e6: [555, 240], e7: [670, 240], e8: [785, 240], e9: [497, 380], e10: [727, 380] } },
+        narrow: { W: 440, H: 1000, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 420 }, pos: { l3: [54, 108], core: [54, 208], aggr: [54, 308], sw: [54, 408], e1: [14, 540], e2: [170, 540], e3: [326, 540], e4: [14, 660], e5: [170, 660], e6: [326, 660], e7: [14, 780], e8: [170, 780], e9: [326, 780], e10: [170, 900] } }
+      },
+      need: [], allow: () => '這一關不用接線。點右邊的字。', noCut: '這一關不用動線。',
+      // [字, 白話解釋, 正解比喻, 兩個錯的比喻]
+      W: [
+        ['光纖', '用光傳資料的線，不怕遠、不怕干擾。本案教室到副控、副控到核心都是它。', '高速公路', ['門牌', '查號台']],
+        ['光模組', '插在交換器黃框插槽裡的小盒子，把電變成光。兩端要同一種（本案都是 LR）。', '高速公路兩端的收費站', ['社區大門', '電話簿']],
+        ['PoE', '用網路線順便送電，AP 和攝影機不用另外插電。', '電線和網路線合成一條', ['停車場', '門牌']],
+        ['VLAN', '把一台交換器切成幾個互不相通的隔間。', '同一棟樓裡的不同辦公室', ['高速公路', '門牌']],
+        ['IP 位址', '設備在網路上的門牌，例如 10.213.250.60。', '門牌', ['查號台', '社區大門']],
+        ['閘道', '這個網段通往外面的大門，要送到別的網段就交給它。', '社區大門', ['門牌', '電話簿']],
+        ['DHCP', '電腦開機時自動幫它領門牌。', '戶政事務所自動發門牌', ['查號台', '保全']],
+        ['DNS', '把網址換成 IP。', '查號台', ['門牌', '高速公路']],
+        ['告警', '智慧網管偵測到異常時發的通知：離線、IP 衝突、Port Loop。', '警報器', ['地圖', '門牌']],
+        ['拓樸圖', '智慧網管自動畫出來的設備連接圖，離線的標紅框。', '地圖', ['警報器', '查號台']]
+      ],
+      init() {
+        const ord = shuffle([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        ord.forEach((w, i) => { const d = this.devs['e' + (i + 1)]; d.w = 105; d.row = this.W[w]; d.name = this.W[w][0]; d.sub = ''; d.pick = ''; d.tag = '還沒選' });
+        return { cables: [], intro: this.intro }
+      },
+      onDev(id) {
+        const d = D[id], r = d.row;
+        if (!r) { say('點右邊的十個字。'); return }
+        showTerm(`<span class="d">${r[0]}</span>\n${r[1]}`);
+        const opts = shuffle([r[2], ...r[3]]);
+        showActs(`${r[0]}最像生活裡的什麼？`, opts.map(o => [o, () => { d.pick = o; d.tag = o.slice(0, 8) }]))
+      },
+      check() {
+        const ids = Object.keys(D).filter(k => k[0] === 'e'), H = '十個字的比喻';
+        if (ids.some(id => !D[id].pick)) return { ok: false, free: true, head: H, lines: [], msg: '還有字沒選。每一個都點開來讀。' };
+        const ok = id => D[id].pick === D[id].row[2], lines = ids.map(id => `<span class="${ok(id)?'o':'x'}">${D[id].name}：${D[id].pick}${ok(id)?'':'　再想想'}</span>`), bad = ids.find(id => !ok(id));
+        return bad ? { ok: false, head: H, lines, msg: `${D[bad].name}：${D[bad].row[1]}` } : { ok: true, head: H, lines }
+      },
+      goals: [['十個字都選好', () => Object.keys(lvk('words').devs).filter(k => k[0] === 'e').every(id => lvk('words').devs[id].pick)]],
+      extra: '先讀解釋再選',
+      passMsg: '過關！這十個字之後每一關都會再看到，有底線的字可以隨時點開。',
+      hints: ['線路類（光纖、光模組、PoE）像道路；位址類（IP、閘道、DHCP、DNS）像門牌和查號台。', 'VLAN 是隔間，告警是警報器，拓樸圖是地圖。', '每個字點開都有一行白話解釋，照解釋選。'],
+      learn: ['<strong>線路類</strong>：光纖是高速公路，光模組是兩端的收費站，PoE 讓一條線同時送電。', '<strong>位址類</strong>：IP 是門牌，閘道是社區大門，DHCP 自動發門牌，DNS 是查號台。', '<strong>管理類</strong>：VLAN 是隔間，告警是警報器，拓樸圖是地圖。之後文字裡有底線的字都可以點開看解釋。'],
+      tip: '實務經驗：跟廠商或教育網路中心講電話時聽到不懂的字，直接問「那是哪一層的東西」，對方通常就會用白話解釋。',
+      home: ['把這十個字抄在一張卡上，旁邊寫自己學校對應的東西：閘道是哪一台、DNS 是多少、拓樸圖在智慧網管哪裡。']
+    },
+
     {
       key: 'pro', no: 25, id: '序章', chap: CH0, osi: [],
       name: '先問範圍',
@@ -1484,7 +1615,7 @@ button:disabled{opacity:.5;cursor:default}
         const notLinked = res.find(x => !x.r);
         if (notLinked) return { ok: false, free: true, head: H, lines, msg: `${D[notLinked.id].name}還沒有接線。` };
         const viaOld = res.find(x => x.r.devs.has('mini') || x.r.devs.has('old'));
-        if (viaOld) return { ok: false, free: true, head: H, lines, msg: `${D[viaOld.id].name}還是經過舊的串接。改接到新教室端交換器的 PoE 埠。` };
+        if (viaOld) return { ok: false, free: true, head: H, lines, msg: `${D[viaOld.id].name}還是經過舊的串接。改接到新教室端交換器的 PoE 埠。`, at: 'mini' };
         if (S().cabled('mini')) return { ok: false, head: H, lines, msg: '設備都改接好了，但小交換器還掛在網路上。把它的線拔掉收走，不然下次有人又會插回去。' };
         return { ok: true, head: H, lines }
       },
@@ -1691,7 +1822,7 @@ button:disabled{opacity:.5;cursor:default}
       check() {
         const ids = ['e1', 'e2', 'e3'], H = '從三台電腦各 ping 8.8.8.8', okd = id => { const c = this.cab(id); return c && !c.broken && !D[id].noip };
         const lines = ids.map(id => okd(id) ? `<span class="o">${D[id].name}：回覆自 8.8.8.8 時間=4ms</span>` : `<span class="x">${D[id].name}：傳輸失敗</span>`), bad = ids.find(id => !okd(id));
-        return bad ? { ok: false, free: true, head: H, lines, msg: `${D[bad].name}不能上網。點它執行 ipconfig，看它拿到什麼 IP。` } : { ok: true, head: H, lines }
+        return bad ? { ok: false, free: true, head: H, lines, msg: `${D[bad].name}不能上網。點它執行 ipconfig，看它拿到什麼 IP。`, at: bad } : { ok: true, head: H, lines }
       },
       goals: [['排除領不到 IP 的原因', () => { const L = lvk('3-3'); return ['e1', 'e2', 'e3'].every(id => !L.blocked(id)) }], ['讓電腦重新領到 IP', () => ['e1', 'e2', 'e3'].every(id => !lvk('3-3').devs[id].noip)]],
       extra: '由下往上查：先看燈，再看教室端，再看副控，最後看校端 L3',
@@ -1746,7 +1877,7 @@ button:disabled{opacity:.5;cursor:default}
       check() {
         const ids = ['e1', 'e2', 'e3'], H = `從三台電腦各 ping 校務系統 ${SRV}.5`, okd = id => this.cab(id) && !D[id].bad;
         const lines = ids.map(id => okd(id) ? `<span class="o">${D[id].name}：有回應</span>` : `<span class="x">${D[id].name}：要求等候逾時</span>`), bad = ids.find(id => !okd(id));
-        if (this.live()) return { ok: false, free: true, head: H, lines, msg: '亂發 IP 的設備還在網路上。點不能上網的電腦執行 ipconfig /all 和 arp -a，再去教室端交換器對 MAC 位址表。' };
+        if (this.live()) return { ok: false, free: true, head: H, lines, msg: '亂發 IP 的設備還在網路上。點不能上網的電腦執行 ipconfig /all 和 arp -a，再去教室端交換器對 MAC 位址表。', at: bad };
         if (!this.cab(this.rogue === 'e4' ? 'e5' : 'e4')) return { ok: false, free: true, head: H, lines, msg: '隔壁教室的印表機被你拔掉了，把它的線接回去。' };
         if (this.cab(this.rogue) && !bad) return { ok: false, head: H, lines, msg: 'DHCP Snooping 擋住了假門牌，電腦都正常了。但那台分享器還插在網路上，找到它拔掉，不然它的無線網路還在發送。' };
         return bad ? { ok: false, free: true, head: H, lines, msg: this.cab(bad) ? `分享器的假門牌被擋掉了，但${D[bad].name}手上還拿著它發的假門牌。點它，重新領一次 IP。` : `${D[bad].name}的線還沒接回去。` } : { ok: true, head: H, lines }
@@ -1807,7 +1938,7 @@ button:disabled{opacity:.5;cursor:default}
         const H = '從兩台電腦各 ping 閘道與 8.8.8.8', c = this.conflict(), none = D.aggr.cfg.gw20 !== GW && D.l3.cfg.vl20 === '停用';
         const st = c ? '時通時斷' : none ? '要求等候逾時' : '有回應';
         const lines = ['e1', 'e2'].map(id => `<span class="${c||none?'x':'o'}">${D[id].name}：閘道 ${st}　8.8.8.8 ${st}</span>`);
-        if (c) return { ok: false, free: true, head: H, lines, msg: `兩台設備同時用 ${GW}。照切換計畫，閘道留在副控，停用校端 L3 的 VLAN 20 介面。改之前先備份。` };
+        if (c) return { ok: false, free: true, head: H, lines, msg: `兩台設備同時用 ${GW}。照切換計畫，閘道留在副控，停用校端 L3 的 VLAN 20 介面。改之前先備份。`, at: 'l3' };
         if (none) return { ok: false, head: H, lines, msg: `現在沒有任何設備回應 ${GW}，整棟都出不去了。副控的 VLAN 20 介面要設成 ${GW} 並啟用。` };
         if (!this.done()) return { ok: false, head: H, lines, msg: `衝突解除了，但閘道還在校端 L3 上，切換計畫沒有完成。副控的 VLAN 20 介面要是 ${GW}，校端 L3 的介面要停用。` };
         return { ok: true, head: H, lines }
@@ -2017,7 +2148,7 @@ button:disabled{opacity:.5;cursor:default}
         const d = D.e2, ip = !d.noip, nm = ip && this.dnsOk(), H = '從老師的筆電測試';
         const lines = [ip ? '<span class="o">ping 8.8.8.8：有回應</span>' : '<span class="x">ping 8.8.8.8：傳輸失敗</span>', nm ? '<span class="o">開啟 www.google.com：成功</span>' : '<span class="x">開啟 www.google.com：找不到伺服器</span>'];
         if (nm && this.overlap()) return { ok: false, head: H, lines, msg: `筆電可以上網了，但 DHCP 範圍設到 ${GW}，那是閘道自己的位址。發到它的電腦會跟閘道撞號，全班都會斷線。範圍要照交接筆記設定。` };
-        return nm ? { ok: true, head: H, lines } : { ok: false, free: true, head: H, lines, msg: '還是不能上網。點筆電，先看 ipconfig /all，再做 ping 測試，判斷卡在哪一層。' }
+        return nm ? { ok: true, head: H, lines } : { ok: false, free: true, head: H, lines, msg: '還是不能上網。點筆電，先看 ipconfig /all，再做 ping 測試，判斷卡在哪一層。', at: 'e2' }
       },
       goals: [['筆電領到學校的 IP', () => !lvk('t4a').devs.e2.noip], ['網址可以換成 IP', () => { const d = lvk('t4a').devs.e2; return !d.noip && [DNS1, DNS2].includes(d.dns) }]],
       extra: '照順序查：IP 有沒有領到，ping IP 通不通，ping 網址通不通',
@@ -2271,7 +2402,7 @@ button:disabled{opacity:.5;cursor:default}
       },
       check() {
         const ok = this.ok(), H = '開啟校務系統', lines = ['<span class="o">學生平板：成功</span>', ok ? '<span class="o">老師的筆電：成功</span>' : '<span class="x">老師的筆電：無法連線</span>'];
-        return ok ? { ok: true, head: H, lines } : { ok: false, free: true, head: H, lines, msg: '筆電還是進不去。點筆電執行 ipconfig /all，看它連的是哪個 SSID、拿到什麼 IP，再開瀏覽器看看。' }
+        return ok ? { ok: true, head: H, lines } : { ok: false, free: true, head: H, lines, msg: '筆電還是進不去。點筆電執行 ipconfig /all，看它連的是哪個 SSID、拿到什麼 IP，再開瀏覽器看看。', at: 'e2' }
       },
       goals: [['筆電連上教師網路並通過認證', () => { const L = lvk('t5'), d = L.devs.e2; return d.ssid === 'YHPS-Teacher' && L.trunk && !d.noip && d.auth }]],
       extra: '先比較兩台的 SSID 和 IP，再決定怎麼處理',
@@ -2489,7 +2620,7 @@ button:disabled{opacity:.5;cursor:default}
         const H = '從 B203 教室電腦測試', ok = this.state === 'ok';
         const lines = [ok ? `<span class="o">ping ${GW}：有回應</span>` : `<span class="x">ping ${GW}：要求等候逾時</span>`, ok ? '<span class="o">ping 8.8.8.8：有回應</span>' : '<span class="x">ping 8.8.8.8：要求等候逾時</span>'];
         if (this.state === 'old') return { ok: false, head: H, lines: lines.concat(['<span class="x">B101、B102、B201 教室：領不到 IP</span>']), msg: '還原到太舊的版本，其他教室也斷了。再比對一次，還原到最新備份。' };
-        return ok ? { ok: true, head: H, lines } : { ok: false, free: true, head: H, lines, msg: 'B203 還是不通。點副控，先比對目前設定與最新備份。' }
+        return ok ? { ok: true, head: H, lines } : { ok: false, free: true, head: H, lines, msg: 'B203 還是不通。點副控，先比對目前設定與最新備份。', at: 'aggr' }
       },
       goals: [['比對過目前設定與備份', () => lvk('6-4').diffed], ['還原到正確的版本', () => lvk('6-4').state === 'ok']],
       extra: '先比對，看清楚差異那一行，再還原',
@@ -2710,7 +2841,7 @@ button:disabled{opacity:.5;cursor:default}
         const ok = this.web(), H = '從報修電腦開啟網頁', lines = [ok ? '<span class="o">www.google.com：成功</span>' : '<span class="x">www.google.com：無法連線</span>'];
         if (!ok && D.l3.cfg.end === GW && !D.e1.noip) return { ok: false, head: H, lines, msg: `DHCP 範圍設到 ${GW}，那是閘道自己的位址。發到它的電腦會跟閘道撞號。範圍要照交接筆記設定。` };
         if (ok && D.sw.ports.p2.vlan === 99) return { ok: false, head: H, lines, msg: '報修電腦好了，可是 P2 被改到 VLAN 99，隔壁電腦反而斷線了。只改有問題的那一埠。' };
-        return ok ? { ok: true, head: H, lines: lines.concat(RULENOTE(D.l3.cfg)) } : { ok: false, free: true, head: H, lines, msg: '還是不能上網。照 SOP 由下往上：連線燈、ipconfig、ping 閘道、ping 外面、ping 網址。' }
+        return ok ? { ok: true, head: H, lines: lines.concat(RULENOTE(D.l3.cfg)) } : { ok: false, free: true, head: H, lines, msg: '還是不能上網。照 SOP 由下往上：連線燈、ipconfig、ping 閘道、ping 外面、ping 網址。', at: 'e1' }
       },
       goals: [['找出原因並排除', () => lvk('7-1').web()]],
       extra: '每一步先確認再動手',
@@ -2942,16 +3073,19 @@ button:disabled{opacity:.5;cursor:default}
 
 /* ===== 81_road.js ===== */
   /* ===== 章節、報修單、工具箱 ===== */
+  // 每章報修單排第一關：先體驗「電話來了先看哪裡」，再回頭學原理
   const ROAD_DEF = [
-    [CH0, ['pro', 'tour', 'rack']],
-    ['第一章　光纖到班（L1）', ['1-1', '1-2', '1-3', '1-4', '1-5', '1-6', 't1']],
-    ['第二章　交換器（L2）', ['2-1', '2-2', '2-3', '2-4', 't2']],
-    ['第三章　門牌與路由（L3）', ['3-1', '3-2', '3-3', '3-4', '3-5', 't3']],
-    ['第四章　窗口與守門員（L4–L7）', ['4-1', '4-2', 't4a', 't4b']],
-    ['第五章　無線教室', ['5-1', '5-2', '5-3', 't5']],
-    ['第六章　智慧網管', ['6-1', '6-2', '6-3', '6-4', '6-5', '6-6', 't6']],
+    [CH0, ['words', 'pro', 'tour', 'rack']],
+    ['第一章　光纖到班（L1）', ['t1', '1-1', '1-2', '1-3', '1-4', '1-5', '1-6']],
+    ['第二章　交換器（L2）', ['t2', '2-1', '2-2', '2-3', '2-4']],
+    ['第三章　門牌與路由（L3）', ['t3', '3-1', '3-2', '3-3', '3-4', '3-5']],
+    ['第四章　窗口與守門員（L4–L7）', ['t4a', 't4b', '4-1', '4-2']],
+    ['第五章　無線教室', ['t5', '5-1', '5-2', '5-3']],
+    ['第六章　智慧網管', ['6-1', '6-2', 't6', '6-3', '6-4', '6-5', '6-6']],
     ['第七章　斷線大搜查', ['7-1', '7-2', '7-3']]
   ];
+  // 必修路線：序章四關、每章一張報修單、智慧網管兩關、SOP 總驗收、畢業任務；其餘為進階
+  const REQUIRED_DEF = ['words', 'pro', 'tour', 'rack', 't1', 't2', 't3', 't4a', 't5', '6-1', '6-2', 't6', '7-1', '7-3'];
   const TICKETS_DEF = ['t1', 't2', 't3', 't4a', 't4b', 't5', 't6', '7-1', '7-2'];
   const TOOLS_DEF = [
     ['看燈號', 't1', '回答「線有沒有通、設備有沒有電」。PSU 燈不亮是沒電；連線燈不亮是線或對面設備的問題；燈的顏色常代表速度。'],
@@ -2966,8 +3100,106 @@ button:disabled{opacity:.5;cursor:default}
   ];
   const ROAD = ROAD_DEF.map(c => [c[0], c[1].map(k => { const l = lvk(k); return [l.id, l.name, l.no] })]);
   const PLAY = ROAD.flatMap(c => c[1].map(r => r[2]));
+  const REQUIRED = REQUIRED_DEF.map(k => lvk(k).no);
+
+/* ===== 82_solutions.js ===== */
+  /* ===== 看示範：各關正解（由 test/_solutions.js 產生，勿手改） ===== */
+// 守門用：每關的解法（回傳 apply() 事件序列），只在測試時注入，不進成品
+const DEMO_SOL = {
+  'words': (L, D) => Object.keys(D).filter(k => k[0] === 'e').flatMap(id => [['d', id], ['b', D[id].row[2]]]).concat([['t']]),
+  'pro': (L, D) => ['e1','e2','e3','e4','e5'].flatMap(id => [['d', id], ['b', L.O[L.C[D[id].call][2]]]]).concat([['t']]),
+  'tour': (L, D) => L.R.flatMap(r => [['d', r[0]], ['b', L.O[L.ans(r)]]]).concat([['t']]),
+  'rack': (L, D) => ['l3','core','old','radar'].flatMap(id => [['d', id], ['b', L.ROLES[L.ANS[id]]]]).concat([['t']]),
+  '1-1': () => [['k','utp'],['c','pc.nic','sw.p1'],['k','fiber'],['c','sw.s1','aggr.s2'],['t']],
+  '1-2': () => [['k','utp'],['c','pc.nic','sw.p1'],['k','jump'],['c','sw.s1','box.p'],['c','term.b203','aggr.s2'],['t']],
+  '1-3': () => [['k','dac'],['c','l3.s1','core.s1'],['k','lr'],['m','core.s2'],['m','b1.sfp'],['m','core.s3'],['m','b2.sfp'],['k','smf'],['c','core.s2','b1.sfp'],['c','core.s3','b2.sfp'],['t']],
+  '1-4': (L) => [['d','sign'],['d',L.outlet],['c','ap1.p','sw.p1'],['c','ap2.p','sw.p2'],['c','cam.p','sw.p3'],['c','phone.p','sw.p4'],['c','sign.p','sw.p5'],['c','pc.nic','sw.p6'],['t']],
+  '1-5': () => [['c','core.s2','da.up'],['c','core.s3','db.up'],['c','da.d1','a1.up'],['c','da.d2','a2.up'],['c','db.d1','b1.up'],['c','db.d2','b2.up'],['t']],
+  '1-6': () => ['core','da','db'].flatMap(id => [['d', id], ['f','psu1','迴路 1（UPS）'], ['f','psu2','迴路 2（市電）'], ['b','關閉']]).concat([['c','da.up','core.s2'],['c','da.up2','core.s3'],['c','db.up','core.s4'],['c','db.up2','core.s5'],['t']]),
+  't1': (L, D, cables) => {
+    const B = L.bld.toLowerCase(), ev = [];
+    if (L.cause === 'cut') { const i = cables.findIndex(c => c.broken); const c = cables[i]; ev.push(['s', i], ['b', '拔掉這條線'], ['c', c.a, c.b]) }
+    else ev.push(['d', 'd' + B], ['b', L.cause === 'nopower' ? '檢查電源線與插座' : '重新開機']);
+    ev.push(['t']); return ev
+  }
+};
+Object.assign(DEMO_SOL, {
+  '2-1': (L, D, cables) => { const i = cables.findIndex(c => c.a.startsWith(L.t + '.') || c.b.startsWith(L.t + '.')); return [['s', i], ['b', '拔掉這條線'], ['t']] },
+  '2-2': (L) => ['e1','e2','e3','e4','e5'].flatMap(id => [['k', 'v' + L.want[id]], ['v', 'sw.p' + L.port[id]]]).concat([['t']]),
+  '2-3': (L, D, cables) => { const f = ['e1','e2','e3'].find(id => D[id].forced); if (f) return [['d', f], ['b', '改成自動協商'], ['t']]; const i = cables.findIndex(c => c.slow); const c = cables[i]; return [['s', i], ['b', '拔掉這條線'], ['c', c.a, c.b], ['t']] },
+  '2-4': () => [['s', 2], ['b', '拔掉這條線'], ['s', 1], ['b', '拔掉這條線'], ['s', 0], ['b', '拔掉這條線'], ['c', 'ap.p', 'sw.p1'], ['c', 'pc.nic', 'sw.p2'], ['t']],
+  't2': (L, D, cables) => { const i = cables.findIndex(c => c.rogue); return [['s', i], ['b', '拔掉這條線'], ['t']] },
+  '3-1': (L) => [['d', 'e1'], ['f', 'ip', L.devs.e2.sub.replace(/\.\d+$/, '.60')], ['f', 'mask', '255.255.255.0'], ['f', 'gw', L.devs.e2.sub.replace(/\.\d+$/, '.254')], ['b', '關閉'], ['t']],
+  '3-2': (L, D) => ['e1','e2','e3','e4','e5'].flatMap(id => [['d', id], ['b', L.local(D[id].ip) ? '直接送（同一個網段）' : '交給閘道（不同網段）']]).concat([['t']]),
+  '3-3': (L, D, cables) => {
+    const ev = [], gw = L.devs.e1.ipv ? L.devs.e1.ipv.replace(/\.\d+$/, '.254') : null;
+    if (L.cause === 'loose') { const i = cables.findIndex(c => c.broken); const c = cables[i]; ev.push(['s', i], ['b', '拔掉這條線'], ['c', c.a, c.b]) }
+    if (L.cause === 'pool') ev.push(['d', 'l3'], ['b', '擴大可發放範圍']);
+    if (L.cause === 'vlan') ev.push(['d', 'sw'], ['b', '把所有埠改回 VLAN 20']);
+    if (L.cause === 'relay') ev.push(['d', 'aggr'], ['b', '把 DHCP Relay 指向校端 L3（' + (D.e1.ipv || D.e2.ipv || D.e3.ipv || '10.213.250.101').replace(/\.\d+$/, '.254') + '）']);
+    for (const id of ['e1','e2','e3']) if (D[id].noip) ev.push(['d', id], ['b', '重新領 IP（ipconfig /renew）']);
+    ev.push(['t']); return ev
+  },
+  '3-4': (L, D, cables) => { const i = cables.findIndex(c => c.a.startsWith(L.rogue + '.') || c.b.startsWith(L.rogue + '.')); const ev = [['s', i], ['b', '拔掉這條線']]; for (const id of ['e1','e2','e3']) if (D[id].bad) ev.push(['d', id], ['b', '重新領 IP（ipconfig /renew）']); ev.push(['t']); return ev },
+  '3-5': () => [['d', 'aggr'], ['b', '備份目前設定'], ['d', 'l3'], ['b', '備份目前設定'], ['d', 'l3'], ['b', '修改 VLAN 20 介面'], ['f', 'vl20', '停用'], ['b', '關閉'], ['t']],
+  't3': (L, D) => { const ids = ['e1','e2','e3','e4']; const gw = D.e1.cfg.gw === D.e2.cfg.gw ? D.e1.cfg.gw : D.e3.cfg.gw; const net = gw.replace(/\.\d+$/, ''); const i = ids.findIndex((id, n) => { const c = D[id].cfg; return c.gw !== gw || c.mask !== '255.255.255.0' || c.ip !== net + '.6' + (n + 1) }); const id = ids[i], c = D[id].cfg, k = c.gw !== gw ? ['gw', gw] : c.mask !== '255.255.255.0' ? ['mask', '255.255.255.0'] : ['ip', net + '.6' + (i + 1)]; return [['d', id], ['f', k[0], k[1]], ['b', '關閉'], ['t']] }
+});
+Object.assign(DEMO_SOL, {
+  '4-1': (L, D) => { const good = L.devs.e1.cfg.dns === '1.2.3.4' ? '163.20.1.1' : '163.20.1.1'; return [['d','e1'],['b','nslookup www.google.com'],['d','e1'],['b','修改 DNS 設定'],['f','dns',good],['b','關閉'],['t']] },
+  '4-2': (L) => { const sc = L.sc, V = '只允許廠商的 IP', w = sc.web ? '允許' : '拒絕'; return [['d','l3'],['f','p80',w],['f','p443',w],['f','p22',sc.ssh?V:'拒絕'],['f','p23','拒絕'],['f','p3389',sc.rdp?V:'拒絕'],['f','other','拒絕'],['b','關閉'],['t']] },
+  't4a': (L, D) => { const net = D.l3.cfg.end.replace(/\.\d+$/, ''); if (L.cause === 'pool') return [['d','l3'],['b','修改 DHCP 設定'],['f','end',net+'.200'],['b','關閉'],['d','e2'],['b','重新領 IP'],['t']]; if (L.cause === 'dhcpdns') return [['d','l3'],['b','修改 DHCP 設定'],['f','dns','163.20.1.1'],['b','關閉'],['d','e2'],['b','重新領 IP'],['t']]; return [['d','e2'],['b','網路介面卡設定'],['f','mode','自動取得'],['b','關閉'],['t']] },
+  't4b': (L) => L.orig === 'dns' ? [['d','e2'],['b','修改 DNS 轉送'],['f','fwd','163.20.1.1'],['b','關閉'],['t']] : [['d','l3'],['b','修改存取控制規則'],['f','r105','停用'],['b','關閉'],['t']],
+  '5-1': (L) => ['e1','e2','e3','e4','e5'].flatMap(id => [['d', id], ['f','ssid',L.want[id][0]], ['f','band',L.want[id][1] || '5 GHz'], ['b','關閉']]).concat([['t']]),
+  '5-2': () => [['e1','1'],['e2','6'],['e3','11']].flatMap(([id, ch]) => [['d', id], ['f','ch',ch], ['f','pos','天花板中央'], ['b','關閉']]).concat([['t']]),
+  '5-3': () => [['s',0],['b','拔掉這條線'],['c','ap.p','sw.p1'],['d','sw'],['f','p1','Trunk（放行 30、100、200）'],['b','關閉'],['t']],
+  't5': (L) => L.cause === 'guest' ? [['d','e2'],['b','改連 YHPS-Teacher'],['t']] : L.cause === 'auth' ? [['d','e2'],['b','在登入頁輸入學校帳號'],['t']] : [['d','sw'],['b','把 VLAN 200 加進 Trunk'],['d','e2'],['b','重新領 IP'],['t']]
+});
+Object.assign(DEMO_SOL, {
+  '6-1': (L, D) => ['e1','e2','e3','e4','e5','e6'].flatMap(id => [['d', id], ['b', L.O[D[id].row[7]]]]).concat([['t']]),
+  '6-2': (L, D) => Object.keys(D).flatMap(id => [['d', id], ['b', L.O[L.ans(id)]]]).concat([['t']]),
+  '6-3': (L, D) => ['e1','e2','e3','e4','e5','e6'].flatMap(id => [['d', id], ['b', L.O[D[id].row[2]]]]).concat([['t']]),
+  '6-4': () => [['d','aggr'],['b','比對目前設定與最新備份'],['d','aggr'],['b','還原到最新備份（上週日）'],['t']],
+  '6-5': (L) => ['s1','s2','s3'].flatMap(id => [['d', id], ['b', id === L.bad ? '退化' : '正常']]).concat([['t']]),
+  '6-6': (L) => ['l3','sw'].flatMap(id => [['d', id], ...Object.entries(L.GOOD[id]).map(([k, v]) => ['f', k, v]), ['b','關閉']]).concat([['t']]),
+  't6': (L, D) => { const gw = D.e1.sub.replace(/\.\d+$/, '.254'); return [['d','e1'],['b','ping 閘道 ' + gw],['d','e1'],['b','ping 8.8.8.8'],['d','e1'],['b','ping 教網 DNS'],['d','e1'],['b','tracert 教網 DNS'],['d','e2'],['f','scope','全校'],['f','gw','通'],['f','dns','不通'],['f','hop','第 ' + L.hop + ' 站之後'],['f','who','教育網路中心'],['b','關閉'],['t']] }
+});
+Object.assign(DEMO_SOL, {
+  '7-1': (L, D, cables) => {
+    const ev = [], net = D.e2.sub.replace(/\.\d+$/, '');
+    if (L.cause === 'loose') { const c = cables[0]; ev.push(['s', 0], ['b', '拔掉這條線'], ['c', c.a, c.b], ['d', 'e1'], ['b', '重新領 IP']) }
+    if (L.cause === 'vlan') ev.push(['d', 'sw'], ['b', '修改埠的 VLAN'], ['f', 'p1', 'VLAN 20'], ['b', '關閉'], ['d', 'e1'], ['b', '重新領 IP']);
+    if (L.cause === 'pool') ev.push(['d', 'l3'], ['b', '修改 DHCP 設定'], ['f', 'end', net + '.200'], ['b', '關閉'], ['d', 'e1'], ['b', '重新領 IP']);
+    if (L.cause === 'dns') ev.push(['d', 'l3'], ['b', '修改 DHCP 設定'], ['f', 'dns', '163.20.1.1'], ['b', '關閉'], ['d', 'e1'], ['b', '重新領 IP']);
+    if (L.cause === 'rule') ev.push(['d', 'l3'], ['b', '修改存取控制規則'], ['f', 'r105', '停用'], ['b', '關閉']);
+    ev.push(['t']); return ev
+  },
+  '7-2': (L, D) => { const C = L.CASES[L.k], gw = D.e1.sub.replace(/\.\d+$/, '.254'); return [['d','e1'],['b','ping 閘道 ' + gw],['d','e1'],['b','ping 8.8.8.8'],['d','e1'],['b','tracert 教網 DNS'],['d','e1'],['b','看教室端的燈'],['d','l3'],['b','查看智慧網管系統告警'],['d','e2'],['f','scope','全校'],['f','gw',C.gw?'通':'不通'],['f','ext','不通'],['f','hop',C.hop],['f','who',C.who],['b','關閉'],['t']] },
+  '7-3': () => null
+});
 
 /* ===== 90_tail.js ===== */
+  /* ---------- 術語白話：關卡文字裡每個術語第一次出現時加底線，點開看一行解釋 ---------- */
+  const GL_KEYS = Object.keys(GLOSSARY).sort((a, b) => b.length - a.length);
+  const GL_RE = new RegExp('(?<![A-Za-z0-9])(?:' + GL_KEYS.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')(?![A-Za-z0-9])', 'g');
+  function gl(text, isHtml) {
+    const parts = (isHtml ? sp(String(text)) : esc(sp(String(text)))).split(/(<[^>]+>)/), seen = new Set();
+    return parts.map(p => p.startsWith('<') ? p : p.replace(GL_RE, m => { if (seen.has(m)) return m; seen.add(m); return `<span class="gl" tabindex="0" role="button" data-gl="${m}">${m}</span>` })).join('')
+  }
+  function glShow(g) {
+    const k = g.dataset.gl, tip = $('gltip');
+    if (!GLOSSARY[k]) return;
+    tip.innerHTML = `<b>${esc(k)}</b>　${esc(GLOSSARY[k])}`;
+    tip.hidden = false;
+    const r = g.getBoundingClientRect();
+    tip.style.left = Math.max(8, Math.min(window.scrollX + r.left, window.scrollX + document.documentElement.clientWidth - 340)) + 'px';
+    tip.style.top = (window.scrollY + r.bottom + 6) + 'px'
+  }
+  document.addEventListener('click', e => { const g = e.target.closest && e.target.closest('.gl'); if (g) { e.preventDefault(); glShow(g) } else if (!e.target.closest('#gltip')) $('gltip').hidden = true });
+  document.addEventListener('keydown', e => { const g = e.target.closest && e.target.closest('.gl'); if (g && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); glShow(g) } if (e.key === 'Escape') $('gltip').hidden = true });
+  // 答錯時把封包卡住的那一台設備反白幾秒
+  function flashDev(id) { const g = gDev[id]; if (!g) return; g.classList.add('stuck'); setTimeout(() => g.classList.remove('stuck'), 4000) }
+  let DEMO = false; // 看示範：自動播放正解，這一局不計分、不存檔
+
   /* ---------- 狀態 ---------- */
   // 存檔：SAVE[關卡索引] = {cur: 這一局, done: 最近一次過關的那一局}，每局是 {s: 亂數種子, e: 操作清單, w: 過關星數}
   let SAVE = {};
@@ -4301,7 +4533,8 @@ button:disabled{opacity:.5;cursor:default}
     return {
       ok,
       segs,
-      devs
+      devs,
+      deep
     };
   }
 
@@ -4386,6 +4619,7 @@ button:disabled{opacity:.5;cursor:default}
           finishWin()
         } else {
           if (!r.free) fails++;
+          if (r.at) flashDev(r.at);
           say(r.msg, 'bad')
         }
         fin0()
@@ -4408,8 +4642,12 @@ button:disabled{opacity:.5;cursor:default}
         fails++;
         pkt.setAttribute('class', 'pkt bad');
         term(['<span class="x">要求等候逾時。</span>', '<span class="x">要求等候逾時。</span>', '已傳送 = 2，已收到 = 0，遺失 = 2 (100%)']).then(() => {
+          if (r.deep && r.deep !== 'net') flashDev(dv(r.deep));
           say(LV.diagnose(S()), 'bad');
-          fin()
+          busy = false;
+          $('test').disabled = false;
+          place();
+          setTimeout(() => pkt.setAttribute('visibility', 'hidden'), 2500)
         });
         return
       }
@@ -4457,13 +4695,36 @@ button:disabled{opacity:.5;cursor:default}
       })
     }
   };
+  $('demo').onclick = async () => {
+    if (busy || replaying || VIEW) return;
+    const sol = DEMO_SOL[LV.key];
+    if (!sol) return;
+    DEMO = true;
+    fresh('示範開始：看每一步怎麼做。示範的這一局不計分，看完按「重來」自己做一次。');
+    const myGen = gen;
+    let ev = null;
+    try { ev = sol(LV, D, cables) } catch (e) {}
+    if (!ev) { DEMO = false; return }
+    $('log').open = true;
+    for (const e of ev) {
+      if (gen !== myGen) return;
+      let ok = false;
+      try { ok = apply(e) } catch (x) {}
+      if (!ok) break;
+      while (busy) await new Promise(f => setTimeout(f, 30));
+      await new Promise(f => setTimeout(f, reduce ? 200 : 900));
+      if (gen !== myGen) return
+    }
+    if (gen !== myGen) return;
+    say('示範結束。操作紀錄列出了每一步。這一局不計分，按「重來」自己做一次。', 'ok')
+  };
   $('hintBtn').onclick = () => {
     const h = $('hint'),
       n = LV.hints.length,
       i = Math.min(hints, n - 1);
     rec(['h'], `看提示 ${i+1}`);
     h.hidden = false;
-    h.textContent = sp(`提示 ${i+1}/${n}：` + LV.hints[i]);
+    h.innerHTML = gl(`提示 ${i+1}/${n}：` + LV.hints[i]);
     hints++
   };
 
@@ -4489,7 +4750,7 @@ button:disabled{opacity:.5;cursor:default}
       n = 1 + s2 + s3;
     $('stars').innerHTML = '<b>' + '★'.repeat(n) + '</b>' + '★'.repeat(3 - n);
     if (testStep) testStep.t = `按「${LV.testLabel||'測試連線'}」：過關 ${'★'.repeat(n)}${'☆'.repeat(3-n)}`;
-    if (!VIEW) {
+    if (!VIEW && !DEMO) {
       PROG.lv[li] = Math.max(PROG.lv[li] || 0, n);
       saveProg();
       road();
@@ -4588,7 +4849,8 @@ button:disabled{opacity:.5;cursor:default}
       return {
         d,
         st: r.ok ? 'ok' : 'dead',
-        segs: r.segs
+        segs: r.segs,
+        deep: r.deep
       }
     });
     let i = 0;
@@ -4602,6 +4864,7 @@ button:disabled{opacity:.5;cursor:default}
             finishWin()
           }
           if (bad && !LV.freeTest) fails++;
+          if (bad) flashDev(bad.st === 'dead' && bad.deep && bad.deep !== 'net' ? dv(bad.deep) : Object.keys(D).find(k => D[k] === bad.d));
           if (bad && bad.st === 'nopower' && onPoe(Object.keys(D).find(k => D[k] === bad.d))) say(`${bad.d.name}沒有電。PoE 交換器的總供電不夠分了。點一下各台設備，看誰旁邊有插座可以改用變壓器。`, 'bad');
           else if (bad && bad.st === 'nopower') say(`${bad.d.name}沒有電。它插在一般埠，一般埠只傳資料、不供電。改插橘框的 PoE 埠。`, 'bad');
           else if (bad && bad.st === 'none') say(`${bad.d.name}還沒有接線。`, 'bad');
@@ -4647,15 +4910,15 @@ button:disabled{opacity:.5;cursor:default}
       t: 0
     };
     seed = R0.s;
-    REC = VIEW ? null : R0;
-    if (!VIEW) {
+    REC = VIEW || DEMO ? null : R0;
+    if (!VIEW && !DEMO) {
       (SAVE[li] = SAVE[li] || {}).cur = R0;
       saveSave()
     }
     if (LV.init) {
       const r = LV.init();
       cables = r.cables;
-      $('intro').textContent = sp(r.intro)
+      $('intro').innerHTML = gl(r.intro)
     }
     pend = null;
     won = false;
@@ -4677,6 +4940,7 @@ button:disabled{opacity:.5;cursor:default}
       viewGo(0);
       return
     }
+    DEMO = false;
     fresh('已全部重來。從任一個連接埠拉線開始。');
     REC.t = Date.now();
     saveSave(li)
@@ -4960,7 +5224,8 @@ button:disabled{opacity:.5;cursor:default}
     $('road').innerHTML = ROAD.map(c => `<h3 class="chap-h">${c[0]}</h3><ol class="road">` + c[1].map(r => {
       const n = PROG.lv[r[2]] || 0;
       const now = r[2] === li && !DISP;
-      return `<li class="${now?'now':''}"><button data-lv="${r[2]}"><span>${r[0]} · ${now?'進行中':n?'<b>'+'★'.repeat(n)+'</b>'+'☆'.repeat(3-n):'還沒過'}</span>${r[1]}</button></li>`
+      const req = REQUIRED.includes(r[2]);
+      return `<li class="${now?'now':''}${req?' req':''}"><button data-lv="${r[2]}"><span>${r[0]} · ${now?'進行中':n?'<b>'+'★'.repeat(n)+'</b>'+'☆'.repeat(3-n):'還沒過'}</span>${r[1]}<em>${req?'必修':'進階'}</em></button></li>`
     }).join('') + '</ol>').join('');
     summary();
   }
@@ -4996,10 +5261,12 @@ button:disabled{opacity:.5;cursor:default}
     D = LV.devs;
     $('lvl').textContent = DISP ? '隨機派工 · 報修單' : LV.id === LV.chap ? `${LV.id} · ${LV.name}` : `${LV.chap||CH1} · ${LV.id} ${LV.name}`;
     $('test').textContent = LV.testLabel || '測試連線';
-    $('task').textContent = sp(LV.task);
-    $('intro').textContent = sp(LV.intro);
-    $('learn').innerHTML = LV.learn.map(x => `<li>${sp(x)}</li>`).join('');
-    $('tip').textContent = sp(LV.tip);
+    $('task').innerHTML = gl(LV.task);
+    $('intro').innerHTML = gl(LV.intro);
+    $('learn').innerHTML = LV.learn.map(x => `<li>${gl(x, true)}</li>`).join('');
+    $('tip').innerHTML = gl(LV.tip);
+    $('demo').hidden = !DEMO_SOL[LV.key];
+    DEMO = false;
     $('see').hidden = !LV.see;
     $('see').innerHTML = LV.see ? '<h2>相關的知識卡</h2><div class="btns">' + LV.see.map(k => {
       const c = CARDS.find(x => x[0] === k);
@@ -5247,7 +5514,8 @@ button:disabled{opacity:.5;cursor:default}
     const lv = Object.keys(PROG.lv).length,
       st = Object.values(PROG.lv).reduce((a, b) => a + b, 0),
       cd = Object.keys(PROG.cd).length;
-    $('prog').textContent = `已通過 ${lv} / ${LEVELS.length} 關　星星 ${st} / ${LEVELS.length*3}　知識卡 ${cd} / ${CARDS.length}`
+    const rq = REQUIRED.filter(n => PROG.lv[n]).length;
+    $('prog').textContent = `必修 ${rq} / ${REQUIRED.length}　全部 ${lv} / ${LEVELS.length} 關　星星 ${st} / ${LEVELS.length*3}　知識卡 ${cd} / ${CARDS.length}`
   }
   addEventListener('afterprint', () => document.body.classList.remove('pc'));
   let armed = 0;
@@ -5318,7 +5586,7 @@ button:disabled{opacity:.5;cursor:default}
   };
 
   function track(ev) {
-    if (VIEW || replaying || !API || !WHO || WHO.bad || TEACH) return;
+    if (VIEW || DEMO || replaying || !API || !WHO || WHO.bad || TEACH) return;
     Q.push(ev);
     if (Q.length > 500) Q = Q.slice(-500);
     saveQ();

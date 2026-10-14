@@ -1,3 +1,25 @@
+  /* ---------- 術語白話：關卡文字裡每個術語第一次出現時加底線，點開看一行解釋 ---------- */
+  const GL_KEYS = Object.keys(GLOSSARY).sort((a, b) => b.length - a.length);
+  const GL_RE = new RegExp('(?<![A-Za-z0-9])(?:' + GL_KEYS.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')(?![A-Za-z0-9])', 'g');
+  function gl(text, isHtml) {
+    const parts = (isHtml ? sp(String(text)) : esc(sp(String(text)))).split(/(<[^>]+>)/), seen = new Set();
+    return parts.map(p => p.startsWith('<') ? p : p.replace(GL_RE, m => { if (seen.has(m)) return m; seen.add(m); return `<span class="gl" tabindex="0" role="button" data-gl="${m}">${m}</span>` })).join('')
+  }
+  function glShow(g) {
+    const k = g.dataset.gl, tip = $('gltip');
+    if (!GLOSSARY[k]) return;
+    tip.innerHTML = `<b>${esc(k)}</b>　${esc(GLOSSARY[k])}`;
+    tip.hidden = false;
+    const r = g.getBoundingClientRect();
+    tip.style.left = Math.max(8, Math.min(window.scrollX + r.left, window.scrollX + document.documentElement.clientWidth - 340)) + 'px';
+    tip.style.top = (window.scrollY + r.bottom + 6) + 'px'
+  }
+  document.addEventListener('click', e => { const g = e.target.closest && e.target.closest('.gl'); if (g) { e.preventDefault(); glShow(g) } else if (!e.target.closest('#gltip')) $('gltip').hidden = true });
+  document.addEventListener('keydown', e => { const g = e.target.closest && e.target.closest('.gl'); if (g && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); glShow(g) } if (e.key === 'Escape') $('gltip').hidden = true });
+  // 答錯時把封包卡住的那一台設備反白幾秒
+  function flashDev(id) { const g = gDev[id]; if (!g) return; g.classList.add('stuck'); setTimeout(() => g.classList.remove('stuck'), 4000) }
+  let DEMO = false; // 看示範：自動播放正解，這一局不計分、不存檔
+
   /* ---------- 狀態 ---------- */
   // 存檔：SAVE[關卡索引] = {cur: 這一局, done: 最近一次過關的那一局}，每局是 {s: 亂數種子, e: 操作清單, w: 過關星數}
   let SAVE = {};
@@ -1331,7 +1353,8 @@
     return {
       ok,
       segs,
-      devs
+      devs,
+      deep
     };
   }
 
@@ -1416,6 +1439,7 @@
           finishWin()
         } else {
           if (!r.free) fails++;
+          if (r.at) flashDev(r.at);
           say(r.msg, 'bad')
         }
         fin0()
@@ -1438,8 +1462,12 @@
         fails++;
         pkt.setAttribute('class', 'pkt bad');
         term(['<span class="x">要求等候逾時。</span>', '<span class="x">要求等候逾時。</span>', '已傳送 = 2，已收到 = 0，遺失 = 2 (100%)']).then(() => {
+          if (r.deep && r.deep !== 'net') flashDev(dv(r.deep));
           say(LV.diagnose(S()), 'bad');
-          fin()
+          busy = false;
+          $('test').disabled = false;
+          place();
+          setTimeout(() => pkt.setAttribute('visibility', 'hidden'), 2500)
         });
         return
       }
@@ -1487,13 +1515,36 @@
       })
     }
   };
+  $('demo').onclick = async () => {
+    if (busy || replaying || VIEW) return;
+    const sol = DEMO_SOL[LV.key];
+    if (!sol) return;
+    DEMO = true;
+    fresh('示範開始：看每一步怎麼做。示範的這一局不計分，看完按「重來」自己做一次。');
+    const myGen = gen;
+    let ev = null;
+    try { ev = sol(LV, D, cables) } catch (e) {}
+    if (!ev) { DEMO = false; return }
+    $('log').open = true;
+    for (const e of ev) {
+      if (gen !== myGen) return;
+      let ok = false;
+      try { ok = apply(e) } catch (x) {}
+      if (!ok) break;
+      while (busy) await new Promise(f => setTimeout(f, 30));
+      await new Promise(f => setTimeout(f, reduce ? 200 : 900));
+      if (gen !== myGen) return
+    }
+    if (gen !== myGen) return;
+    say('示範結束。操作紀錄列出了每一步。這一局不計分，按「重來」自己做一次。', 'ok')
+  };
   $('hintBtn').onclick = () => {
     const h = $('hint'),
       n = LV.hints.length,
       i = Math.min(hints, n - 1);
     rec(['h'], `看提示 ${i+1}`);
     h.hidden = false;
-    h.textContent = sp(`提示 ${i+1}/${n}：` + LV.hints[i]);
+    h.innerHTML = gl(`提示 ${i+1}/${n}：` + LV.hints[i]);
     hints++
   };
 
@@ -1519,7 +1570,7 @@
       n = 1 + s2 + s3;
     $('stars').innerHTML = '<b>' + '★'.repeat(n) + '</b>' + '★'.repeat(3 - n);
     if (testStep) testStep.t = `按「${LV.testLabel||'測試連線'}」：過關 ${'★'.repeat(n)}${'☆'.repeat(3-n)}`;
-    if (!VIEW) {
+    if (!VIEW && !DEMO) {
       PROG.lv[li] = Math.max(PROG.lv[li] || 0, n);
       saveProg();
       road();
@@ -1618,7 +1669,8 @@
       return {
         d,
         st: r.ok ? 'ok' : 'dead',
-        segs: r.segs
+        segs: r.segs,
+        deep: r.deep
       }
     });
     let i = 0;
@@ -1632,6 +1684,7 @@
             finishWin()
           }
           if (bad && !LV.freeTest) fails++;
+          if (bad) flashDev(bad.st === 'dead' && bad.deep && bad.deep !== 'net' ? dv(bad.deep) : Object.keys(D).find(k => D[k] === bad.d));
           if (bad && bad.st === 'nopower' && onPoe(Object.keys(D).find(k => D[k] === bad.d))) say(`${bad.d.name}沒有電。PoE 交換器的總供電不夠分了。點一下各台設備，看誰旁邊有插座可以改用變壓器。`, 'bad');
           else if (bad && bad.st === 'nopower') say(`${bad.d.name}沒有電。它插在一般埠，一般埠只傳資料、不供電。改插橘框的 PoE 埠。`, 'bad');
           else if (bad && bad.st === 'none') say(`${bad.d.name}還沒有接線。`, 'bad');
@@ -1677,15 +1730,15 @@
       t: 0
     };
     seed = R0.s;
-    REC = VIEW ? null : R0;
-    if (!VIEW) {
+    REC = VIEW || DEMO ? null : R0;
+    if (!VIEW && !DEMO) {
       (SAVE[li] = SAVE[li] || {}).cur = R0;
       saveSave()
     }
     if (LV.init) {
       const r = LV.init();
       cables = r.cables;
-      $('intro').textContent = sp(r.intro)
+      $('intro').innerHTML = gl(r.intro)
     }
     pend = null;
     won = false;
@@ -1707,6 +1760,7 @@
       viewGo(0);
       return
     }
+    DEMO = false;
     fresh('已全部重來。從任一個連接埠拉線開始。');
     REC.t = Date.now();
     saveSave(li)
@@ -1990,7 +2044,8 @@
     $('road').innerHTML = ROAD.map(c => `<h3 class="chap-h">${c[0]}</h3><ol class="road">` + c[1].map(r => {
       const n = PROG.lv[r[2]] || 0;
       const now = r[2] === li && !DISP;
-      return `<li class="${now?'now':''}"><button data-lv="${r[2]}"><span>${r[0]} · ${now?'進行中':n?'<b>'+'★'.repeat(n)+'</b>'+'☆'.repeat(3-n):'還沒過'}</span>${r[1]}</button></li>`
+      const req = REQUIRED.includes(r[2]);
+      return `<li class="${now?'now':''}${req?' req':''}"><button data-lv="${r[2]}"><span>${r[0]} · ${now?'進行中':n?'<b>'+'★'.repeat(n)+'</b>'+'☆'.repeat(3-n):'還沒過'}</span>${r[1]}<em>${req?'必修':'進階'}</em></button></li>`
     }).join('') + '</ol>').join('');
     summary();
   }
@@ -2026,10 +2081,12 @@
     D = LV.devs;
     $('lvl').textContent = DISP ? '隨機派工 · 報修單' : LV.id === LV.chap ? `${LV.id} · ${LV.name}` : `${LV.chap||CH1} · ${LV.id} ${LV.name}`;
     $('test').textContent = LV.testLabel || '測試連線';
-    $('task').textContent = sp(LV.task);
-    $('intro').textContent = sp(LV.intro);
-    $('learn').innerHTML = LV.learn.map(x => `<li>${sp(x)}</li>`).join('');
-    $('tip').textContent = sp(LV.tip);
+    $('task').innerHTML = gl(LV.task);
+    $('intro').innerHTML = gl(LV.intro);
+    $('learn').innerHTML = LV.learn.map(x => `<li>${gl(x, true)}</li>`).join('');
+    $('tip').innerHTML = gl(LV.tip);
+    $('demo').hidden = !DEMO_SOL[LV.key];
+    DEMO = false;
     $('see').hidden = !LV.see;
     $('see').innerHTML = LV.see ? '<h2>相關的知識卡</h2><div class="btns">' + LV.see.map(k => {
       const c = CARDS.find(x => x[0] === k);
@@ -2277,7 +2334,8 @@
     const lv = Object.keys(PROG.lv).length,
       st = Object.values(PROG.lv).reduce((a, b) => a + b, 0),
       cd = Object.keys(PROG.cd).length;
-    $('prog').textContent = `已通過 ${lv} / ${LEVELS.length} 關　星星 ${st} / ${LEVELS.length*3}　知識卡 ${cd} / ${CARDS.length}`
+    const rq = REQUIRED.filter(n => PROG.lv[n]).length;
+    $('prog').textContent = `必修 ${rq} / ${REQUIRED.length}　全部 ${lv} / ${LEVELS.length} 關　星星 ${st} / ${LEVELS.length*3}　知識卡 ${cd} / ${CARDS.length}`
   }
   addEventListener('afterprint', () => document.body.classList.remove('pc'));
   let armed = 0;
@@ -2348,7 +2406,7 @@
   };
 
   function track(ev) {
-    if (VIEW || replaying || !API || !WHO || WHO.bad || TEACH) return;
+    if (VIEW || DEMO || replaying || !API || !WHO || WHO.bad || TEACH) return;
     Q.push(ev);
     if (Q.length > 500) Q = Q.slice(-500);
     saveQ();

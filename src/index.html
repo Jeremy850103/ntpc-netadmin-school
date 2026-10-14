@@ -52,6 +52,7 @@
       <div class="box">
         <h2 id="task"></h2>
         <p id="intro"></p>
+        <p class="glnote">有底線的字可以點開看一行解釋。</p>
         <ul class="goal" id="goals"></ul>
         <div class="inv" id="inv" aria-label="剩餘線材"></div>
         <div class="kinds" id="kinds" hidden></div>
@@ -60,6 +61,7 @@
       <div class="btns">
         <button class="go" id="test">測試連線</button>
         <button id="hintBtn">提示</button>
+        <button id="demo">看示範</button>
         <button id="reset">重來</button>
       </div>
       <p class="hint" id="hint" hidden></p>
@@ -81,6 +83,7 @@
 
   <h2 class="road-h">闖關路線</h2>
   <p class="progrow"><span id="prog"></span><button id="wipe">清除紀錄</button></p>
+  <p class="progrow">必修 14 關約 90 分鐘：序章四關、每章的報修單、智慧網管前兩關、SOP 總驗收與畢業任務。標「進階」的關卡講原理與接線，有空再做。</p>
   <p class="progrow"><button id="disp">隨機派工：抽一張報修單</button><span id="disptext"></span><span id="dispn"></span></p>
   <div id="road"></div>
 
@@ -90,6 +93,7 @@
   <p class="progrow foot">新北網管小學堂　新北市政府教育局指導、顯赫資訊股份有限公司製作（2026）。本課程程式架構沿用「網管小學堂：接線大作戰」（辛文義／米立方智慧科技，MIT 授權）；關卡劇本、設備圖與文字為本課程重新撰寫。課程內容供新北市所屬學校教學訓練使用。</p>
 </div>
 <div id="printcard"></div>
+<div id="gltip" hidden></div>
 <script>
 (function(){
 /*__JS__*/

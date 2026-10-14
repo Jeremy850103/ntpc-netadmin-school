@@ -171,7 +171,7 @@
       },
       check() {
         const ok = this.ok(), H = '開啟校務系統', lines = ['<span class="o">學生平板：成功</span>', ok ? '<span class="o">老師的筆電：成功</span>' : '<span class="x">老師的筆電：無法連線</span>'];
-        return ok ? { ok: true, head: H, lines } : { ok: false, free: true, head: H, lines, msg: '筆電還是進不去。點筆電執行 ipconfig /all，看它連的是哪個 SSID、拿到什麼 IP，再開瀏覽器看看。' }
+        return ok ? { ok: true, head: H, lines } : { ok: false, free: true, head: H, lines, msg: '筆電還是進不去。點筆電執行 ipconfig /all，看它連的是哪個 SSID、拿到什麼 IP，再開瀏覽器看看。', at: 'e2' }
       },
       goals: [['筆電連上教師網路並通過認證', () => { const L = lvk('t5'), d = L.devs.e2; return d.ssid === 'YHPS-Teacher' && L.trunk && !d.noip && d.auth }]],
       extra: '先比較兩台的 SSID 和 IP，再決定怎麼處理',

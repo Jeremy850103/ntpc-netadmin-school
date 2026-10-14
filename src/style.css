@@ -262,3 +262,17 @@ button:disabled{opacity:.5;cursor:default}
 .nms-card.alert .body{stroke:var(--bad);stroke-width:2}
 .nms-card .tagt{fill:var(--ink)}
 .dev .pwr.psu1,.dev .pwr.psu2{fill:var(--ok)} .dev.psu1off .pwr.psu1,.dev.psu2off .pwr.psu2{fill:var(--led-off)}
+
+/* 術語底線與浮動解釋 */
+.gl{border-bottom:1.5px dotted var(--cable);cursor:help;color:inherit}
+.gl:hover,.gl:focus-visible{background:color-mix(in srgb,var(--cable) 14%,transparent);outline:none}
+#gltip{position:absolute;z-index:50;max-width:330px;background:var(--surface);color:var(--ink);border:1px solid var(--cable);border-radius:6px;padding:8px 12px;font-size:.88rem;line-height:1.5;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+#gltip b{color:var(--cable);margin-right:4px}
+.glnote{font-size:.78rem;color:var(--muted);margin-top:4px}
+/* 答錯時卡住的那一台 */
+@keyframes stuckpulse{50%{opacity:.35}}
+.dev.stuck>.body,.dev.stuck>.ear,.dev.stuck>.plate{stroke:var(--bad);stroke-width:4;animation:stuckpulse .6s ease-in-out 6}
+/* 路線圖必修／進階 */
+.road li em{display:inline-block;font-style:normal;font-size:.68rem;margin-left:6px;padding:0 6px;border-radius:999px;border:1px solid var(--line);color:var(--muted);vertical-align:1px}
+.road li.req em{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.road li.req{border-style:solid;border-color:var(--device-edge)}

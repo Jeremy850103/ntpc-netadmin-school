@@ -145,7 +145,7 @@
         const d = D.e2, ip = !d.noip, nm = ip && this.dnsOk(), H = '從老師的筆電測試';
         const lines = [ip ? '<span class="o">ping 8.8.8.8：有回應</span>' : '<span class="x">ping 8.8.8.8：傳輸失敗</span>', nm ? '<span class="o">開啟 www.google.com：成功</span>' : '<span class="x">開啟 www.google.com：找不到伺服器</span>'];
         if (nm && this.overlap()) return { ok: false, head: H, lines, msg: `筆電可以上網了，但 DHCP 範圍設到 ${GW}，那是閘道自己的位址。發到它的電腦會跟閘道撞號，全班都會斷線。範圍要照交接筆記設定。` };
-        return nm ? { ok: true, head: H, lines } : { ok: false, free: true, head: H, lines, msg: '還是不能上網。點筆電，先看 ipconfig /all，再做 ping 測試，判斷卡在哪一層。' }
+        return nm ? { ok: true, head: H, lines } : { ok: false, free: true, head: H, lines, msg: '還是不能上網。點筆電，先看 ipconfig /all，再做 ping 測試，判斷卡在哪一層。', at: 'e2' }
       },
       goals: [['筆電領到學校的 IP', () => !lvk('t4a').devs.e2.noip], ['網址可以換成 IP', () => { const d = lvk('t4a').devs.e2; return !d.noip && [DNS1, DNS2].includes(d.dns) }]],
       extra: '照順序查：IP 有沒有領到，ping IP 通不通，ping 網址通不通',

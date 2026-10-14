@@ -4,6 +4,9 @@ import glob, os, re, sys
 H = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(H, 'src'); OUT = os.path.join(H, '出稿', '新北網管小學堂.html')
 def main():
+    sol = open(os.path.join(H, 'test', '_solutions.js'), encoding='utf-8').read()
+    sol = sol.replace('window.__sol = {', 'const DEMO_SOL = {').replace('Object.assign(window.__sol, {', 'Object.assign(DEMO_SOL, {')
+    open(os.path.join(SRC, '82_solutions.js'), 'w', encoding='utf-8').write('  /* ===== 看示範：各關正解（由 test/_solutions.js 產生，勿手改） ===== */\n' + sol)
     js = []
     for f in sorted(glob.glob(os.path.join(SRC, '*.js'))):
         if os.path.basename(f).startswith('_'): continue

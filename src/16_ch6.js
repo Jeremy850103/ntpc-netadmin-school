@@ -196,7 +196,7 @@
         const H = '從 B203 教室電腦測試', ok = this.state === 'ok';
         const lines = [ok ? `<span class="o">ping ${GW}：有回應</span>` : `<span class="x">ping ${GW}：要求等候逾時</span>`, ok ? '<span class="o">ping 8.8.8.8：有回應</span>' : '<span class="x">ping 8.8.8.8：要求等候逾時</span>'];
         if (this.state === 'old') return { ok: false, head: H, lines: lines.concat(['<span class="x">B101、B102、B201 教室：領不到 IP</span>']), msg: '還原到太舊的版本，其他教室也斷了。再比對一次，還原到最新備份。' };
-        return ok ? { ok: true, head: H, lines } : { ok: false, free: true, head: H, lines, msg: 'B203 還是不通。點副控，先比對目前設定與最新備份。' }
+        return ok ? { ok: true, head: H, lines } : { ok: false, free: true, head: H, lines, msg: 'B203 還是不通。點副控，先比對目前設定與最新備份。', at: 'aggr' }
       },
       goals: [['比對過目前設定與備份', () => lvk('6-4').diffed], ['還原到正確的版本', () => lvk('6-4').state === 'ok']],
       extra: '先比對，看清楚差異那一行，再還原',

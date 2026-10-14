@@ -161,7 +161,7 @@
         const notLinked = res.find(x => !x.r);
         if (notLinked) return { ok: false, free: true, head: H, lines, msg: `${D[notLinked.id].name}還沒有接線。` };
         const viaOld = res.find(x => x.r.devs.has('mini') || x.r.devs.has('old'));
-        if (viaOld) return { ok: false, free: true, head: H, lines, msg: `${D[viaOld.id].name}還是經過舊的串接。改接到新教室端交換器的 PoE 埠。` };
+        if (viaOld) return { ok: false, free: true, head: H, lines, msg: `${D[viaOld.id].name}還是經過舊的串接。改接到新教室端交換器的 PoE 埠。`, at: 'mini' };
         if (S().cabled('mini')) return { ok: false, head: H, lines, msg: '設備都改接好了，但小交換器還掛在網路上。把它的線拔掉收走，不然下次有人又會插回去。' };
         return { ok: true, head: H, lines }
       },

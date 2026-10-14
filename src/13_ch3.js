@@ -141,7 +141,7 @@
       check() {
         const ids = ['e1', 'e2', 'e3'], H = '從三台電腦各 ping 8.8.8.8', okd = id => { const c = this.cab(id); return c && !c.broken && !D[id].noip };
         const lines = ids.map(id => okd(id) ? `<span class="o">${D[id].name}：回覆自 8.8.8.8 時間=4ms</span>` : `<span class="x">${D[id].name}：傳輸失敗</span>`), bad = ids.find(id => !okd(id));
-        return bad ? { ok: false, free: true, head: H, lines, msg: `${D[bad].name}不能上網。點它執行 ipconfig，看它拿到什麼 IP。` } : { ok: true, head: H, lines }
+        return bad ? { ok: false, free: true, head: H, lines, msg: `${D[bad].name}不能上網。點它執行 ipconfig，看它拿到什麼 IP。`, at: bad } : { ok: true, head: H, lines }
       },
       goals: [['排除領不到 IP 的原因', () => { const L = lvk('3-3'); return ['e1', 'e2', 'e3'].every(id => !L.blocked(id)) }], ['讓電腦重新領到 IP', () => ['e1', 'e2', 'e3'].every(id => !lvk('3-3').devs[id].noip)]],
       extra: '由下往上查：先看燈，再看教室端，再看副控，最後看校端 L3',
@@ -196,7 +196,7 @@
       check() {
         const ids = ['e1', 'e2', 'e3'], H = `從三台電腦各 ping 校務系統 ${SRV}.5`, okd = id => this.cab(id) && !D[id].bad;
         const lines = ids.map(id => okd(id) ? `<span class="o">${D[id].name}：有回應</span>` : `<span class="x">${D[id].name}：要求等候逾時</span>`), bad = ids.find(id => !okd(id));
-        if (this.live()) return { ok: false, free: true, head: H, lines, msg: '亂發 IP 的設備還在網路上。點不能上網的電腦執行 ipconfig /all 和 arp -a，再去教室端交換器對 MAC 位址表。' };
+        if (this.live()) return { ok: false, free: true, head: H, lines, msg: '亂發 IP 的設備還在網路上。點不能上網的電腦執行 ipconfig /all 和 arp -a，再去教室端交換器對 MAC 位址表。', at: bad };
         if (!this.cab(this.rogue === 'e4' ? 'e5' : 'e4')) return { ok: false, free: true, head: H, lines, msg: '隔壁教室的印表機被你拔掉了，把它的線接回去。' };
         if (this.cab(this.rogue) && !bad) return { ok: false, head: H, lines, msg: 'DHCP Snooping 擋住了假門牌，電腦都正常了。但那台分享器還插在網路上，找到它拔掉，不然它的無線網路還在發送。' };
         return bad ? { ok: false, free: true, head: H, lines, msg: this.cab(bad) ? `分享器的假門牌被擋掉了，但${D[bad].name}手上還拿著它發的假門牌。點它，重新領一次 IP。` : `${D[bad].name}的線還沒接回去。` } : { ok: true, head: H, lines }
@@ -257,7 +257,7 @@
         const H = '從兩台電腦各 ping 閘道與 8.8.8.8', c = this.conflict(), none = D.aggr.cfg.gw20 !== GW && D.l3.cfg.vl20 === '停用';
         const st = c ? '時通時斷' : none ? '要求等候逾時' : '有回應';
         const lines = ['e1', 'e2'].map(id => `<span class="${c||none?'x':'o'}">${D[id].name}：閘道 ${st}　8.8.8.8 ${st}</span>`);
-        if (c) return { ok: false, free: true, head: H, lines, msg: `兩台設備同時用 ${GW}。照切換計畫，閘道留在副控，停用校端 L3 的 VLAN 20 介面。改之前先備份。` };
+        if (c) return { ok: false, free: true, head: H, lines, msg: `兩台設備同時用 ${GW}。照切換計畫，閘道留在副控，停用校端 L3 的 VLAN 20 介面。改之前先備份。`, at: 'l3' };
         if (none) return { ok: false, head: H, lines, msg: `現在沒有任何設備回應 ${GW}，整棟都出不去了。副控的 VLAN 20 介面要設成 ${GW} 並啟用。` };
         if (!this.done()) return { ok: false, head: H, lines, msg: `衝突解除了，但閘道還在校端 L3 上，切換計畫沒有完成。副控的 VLAN 20 介面要是 ${GW}，校端 L3 的介面要停用。` };
         return { ok: true, head: H, lines }

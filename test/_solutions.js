@@ -1,5 +1,6 @@
 // 守門用：每關的解法（回傳 apply() 事件序列），只在測試時注入，不進成品
 window.__sol = {
+  'words': (L, D) => Object.keys(D).filter(k => k[0] === 'e').flatMap(id => [['d', id], ['b', D[id].row[2]]]).concat([['t']]),
   'pro': (L, D) => ['e1','e2','e3','e4','e5'].flatMap(id => [['d', id], ['b', L.O[L.C[D[id].call][2]]]]).concat([['t']]),
   'tour': (L, D) => L.R.flatMap(r => [['d', r[0]], ['b', L.O[L.ans(r)]]]).concat([['t']]),
   'rack': (L, D) => ['l3','core','old','radar'].flatMap(id => [['d', id], ['b', L.ROLES[L.ANS[id]]]]).concat([['t']]),
