@@ -7,16 +7,16 @@
       intro: `${SCH.name}B 棟 2 樓教室今天完工，壁掛箱裡裝好一台教室端交換器，走廊機櫃有這一棟的副控點交換器。設備都開機了，但還沒有人接線，導師說教室電腦不能上網。`,
       start: '從任一個連接埠按住拖到另一個連接埠，就能拉線。先在選單選線材：電腦用網路線，教室端往副控用光纖。點一下線，再按「拔掉這條線」可以拔掉。',
       kinds: FIBER_UTP_KINDS,
-      devs: { aggr: AGGR('B'), sw: EDGE(), pc: PC() },
-      fixed: [{ a: 'net', b: 'aggr.s1', cls: 'fiber', occupy: true, msg: '這條是副控往核心、再回校端 L3 與教育局的上行光纖，已經接好了，別動它！' }],
+      devs: { l3: L3(), core: CORE(), aggr: AGGR('B'), sw: EDGE(), pc: PC() },
+      fixed: [UPLINK, L3CORE(), CORE_AGG()],
       need: ['sw'],
-      zones: { wide: [[40, 236, 'B 棟 2F 教室壁掛箱'], [40, 390, '教室']], narrow: [[14, 236, 'B 棟 2F 教室壁掛箱'], [14, 400, '教室']] },
+      zones: { wide: [[40, 236, 'B 棟 2F 教室壁掛箱'], [40, 390, '教室']], narrow: [[14, 436, 'B 棟 2F 教室壁掛箱'], [14, 620, '教室']] },
       lay: {
-        wide: { W: 900, H: 540, net: { x: 610, y: 44 }, rack: { x: 470, y: 98, w: 372, h: 200 }, pos: { aggr: [490, 150], sw: [40, 246], pc: [110, 400] } },
-        narrow: { W: 440, H: 700, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 130 }, pos: { aggr: [54, 118], sw: [54, 250], pc: [145, 520] } }
+        wide: { W: 900, H: 540, net: { x: 610, y: 44 }, rack: { x: 470, y: 98, w: 372, h: 330 }, pos: { l3: [490, 108], core: [490, 208], aggr: [490, 308], sw: [40, 246], pc: [110, 400] } },
+        narrow: { W: 440, H: 820, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 330 }, pos: { l3: [54, 108], core: [54, 208], aggr: [54, 308], sw: [54, 450], pc: [145, 640] } }
       },
       goals: [['電腦接上教室端交換器', s => s.link('pc', 'sw')], ['教室端交換器往上接到副控', s => s.link('sw', 'aggr')]],
-      allow: () => null,
+      allow: (a, b) => { const d = [dv(a), dv(b)]; return d.includes('l3') || d.includes('core') ? '教室端的光纖接到該棟的副控。核心與校端 L3 之間的線已經接好，這一關不動。' : null },
       almost: '通了，不過電腦沒有經過教室端交換器。教室還有 AP 和其他設備要接，請改成透過教室端交換器。',
       diagnose: s => !s.cabled('pc') ? '電腦的網路孔是空的，連線燈沒亮。封包連電腦都出不去。' : !s.link('pc', 'sw') ? '電腦的線沒有接到教室端交換器。' : '電腦有連到教室端交換器（燈有亮），但教室端沒有光纖往上接到副控，封包走到教室端就沒路了。',
       hints: ['先看教室電腦：它下方有一個「網路孔」，選「Cat6 網路線」，拉到教室端交換器任一個 P 埠。', '教室端交換器只是把教室的設備接在一起，自己不會上網。選「OS2 單模光纖」，從它黃框的 S1 拉到副控的任一個空 S 埠。', '副控的 S1 是往核心的上行，已經接好了。教室端的光纖接在 S2 到 S6 任一個。'],
@@ -35,6 +35,7 @@
       start: '教室在左邊，副控機櫃在右邊。收容盒貼著黃色標籤 B2-03，到終端箱找同一個編號。光纖跳線兩端的 LR 模組都已經裝好。',
       kinds: { utp: { name: 'Cat6 網路線', max: 100, far: '100 公尺', cost: '$', media: 'rj' }, jump: { name: 'LC 光纖跳線', note: 'LR 模組已裝', far: '盒到機櫃', max: 10000, cost: '', media: 'sfp', direct: true, sw: 'lr' } },
       devs: {
+        l3: L3(), core: CORE(),
         aggr: AGGR('B'),
         term: {
           name: '光纖終端箱', sub: '每一埠通往一間教室的壁掛收容盒', kind: 'rack', passive: true, w: 332, h: 76,
@@ -44,16 +45,17 @@
         sw: EDGE(),
         pc: PC()
       },
-      fixed: [{ a: 'net', b: 'aggr.s1', cls: 'fiber', occupy: true, msg: '這條是副控往核心的上行光纖，已經接好了，不用動它。' }, { a: 'box.p', b: 'term.b203', cls: 'wall', hidden: true }],
+      fixed: [UPLINK, L3CORE(), CORE_AGG(), { a: 'box.p', b: 'term.b203', cls: 'wall', hidden: true }],
       need: ['box', 'term', 'sw'],
-      zones: { wide: [[40, 112, 'B 棟 2F 教室 B2-03'], [40, 276, '管路內 4 芯皮纜（2 芯在線、2 芯備援），通往副控機櫃終端箱']], narrow: [[14, 446, '教室 B2-03'], [14, 586, '管路內 4 芯皮纜，通往終端箱']] },
+      zones: { wide: [[40, 112, 'B 棟 2F 教室 B2-03'], [40, 276, '管路內 4 芯皮纜（2 芯在線、2 芯備援），通往副控機櫃終端箱']], narrow: [[14, 646, '教室 B2-03'], [14, 786, '管路內 4 芯皮纜，通往終端箱']] },
       lay: {
-        wide: { W: 900, H: 560, net: { x: 610, y: 44 }, rack: { x: 470, y: 98, w: 372, h: 320 }, pos: { aggr: [490, 112], term: [490, 226], box: [60, 150], sw: [40, 300], pc: [190, 430] } },
-        narrow: { W: 440, H: 760, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 230 }, pos: { aggr: [54, 110], term: [54, 226], box: [40, 466], sw: [54, 350], pc: [250, 600] } }
+        wide: { W: 900, H: 560, net: { x: 610, y: 44 }, rack: { x: 470, y: 98, w: 372, h: 424 }, pos: { l3: [490, 108], core: [490, 208], aggr: [490, 308], term: [490, 420], box: [60, 150], sw: [40, 300], pc: [190, 430] } },
+        narrow: { W: 440, H: 960, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 424 }, pos: { l3: [54, 108], core: [54, 208], aggr: [54, 308], term: [54, 420], box: [40, 666], sw: [54, 550], pc: [250, 800] } }
       },
       goals: [['電腦接上教室端交換器', s => s.link('pc', 'sw')], ['教室端 S1 跳線到收容盒 B2-03', s => s.link('sw', 'box')], ['終端箱 B2-03 跳線到副控', s => s.plink('term.b203', 'aggr')]],
       allow: (a, b) => {
         const d = [a.split('.')[0], b.split('.')[0]], room = x => x === 'pc' || x === 'box' || x === 'sw';
+        if (d.includes('l3') || d.includes('core')) return '終端箱的跳線接到該棟的副控。核心與校端 L3 之間的線已經接好，這一關不動。';
         if (room(d[0]) !== room(d[1])) return '教室和副控機櫃隔著走廊與管路，跳線拉不過去。教室端交換器要接牆上的壁掛收容盒。';
         return null
       },
@@ -127,6 +129,7 @@
       budget: 120, perPort: 30,
       testHead: '從六台設備各 ping 8.8.8.8', idle: '按「測試連線」會從六台設備各 ping 8.8.8.8',
       devs: {
+        l3: L3(), core: CORE(),
         aggr: AGGR('B'),
         sw: EDGE('教室端交換器', 'ECS4125-10PL · 120 W'),
         ap1: { name: 'Wi-Fi 6 AP 甲', sub: '天花板，需要 26 W（802.3at）', need: 26, kind: 'ap', still: true, w: 200, h: 96, ports: { p: { dx: 156, dy: 60, label: 'PoE 入' } } },
@@ -136,7 +139,7 @@
         sign: { name: '86 吋數位看板', sub: '牆上，需要 60 W', need: 60, kind: 'box', still: true, w: 200, h: 96, ports: { p: { dx: 156, dy: 60, label: 'PoE 入' } } },
         pc: PC()
       },
-      fixed: [{ a: 'net', b: 'aggr.s1', cls: 'fiber', occupy: true, msg: '這條是副控往核心的上行光纖，不用動它。' }, { a: 'aggr.s2', b: 'sw.s1', cls: 'fixed', occupy: true, msg: '這條是教室端往副控的 10G 上行光纖，已經接好了，不用動它。' }],
+      fixed: SWFIX(),
       sources: ['ap1', 'ap2', 'cam', 'phone', 'sign', 'pc'],
       need: [],
       // 看板一定要插座（60 W 超過單埠上限）；攝影機或電話其中一台旁邊也有插座，總預算剛好夠其他三台
@@ -155,11 +158,11 @@
         say(d.adapter ? `${d.name}旁邊有插座。接上變壓器後它自己有電，不再占用 PoE 的瓦數。網路線還是要接。` : `拔掉變壓器，${d.name}又要靠 PoE 供電了。`, d.adapter ? 'ok' : '')
       },
       lay: {
-        wide: { W: 900, H: 600, net: { x: 226, y: 44 }, rack: { x: 40, y: 98, w: 372, h: 424 }, pos: { aggr: [60, 122], sw: [60, 262], ap1: [440, 90], ap2: [670, 90], cam: [440, 200], phone: [670, 200], sign: [440, 310], pc: [700, 330] } },
-        narrow: { W: 440, H: 800, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 214 }, pos: { aggr: [54, 108], sw: [54, 212], ap1: [14, 340], ap2: [226, 340], cam: [14, 446], phone: [226, 446], sign: [14, 552], pc: [250, 560] } }
+        wide: { W: 900, H: 600, net: { x: 226, y: 44 }, rack: { x: 40, y: 98, w: 372, h: 424 }, pos: { l3: [60, 108], core: [60, 208], aggr: [60, 308], sw: [60, 408], ap1: [440, 90], ap2: [670, 90], cam: [440, 200], phone: [670, 200], sign: [440, 310], pc: [700, 330] } },
+        narrow: { W: 440, H: 1000, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 420 }, pos: { l3: [54, 108], core: [54, 208], aggr: [54, 308], sw: [54, 408], ap1: [14, 540], ap2: [226, 540], cam: [14, 646], phone: [226, 646], sign: [14, 752], pc: [250, 760] } }
       },
       goals: [['AP 甲有電', s => s.pow('ap1')], ['AP 乙有電', s => s.pow('ap2')], ['走廊攝影機有電', s => s.pow('cam')], ['IP 電話有電', s => s.pow('phone')], ['數位看板有電', s => s.pow('sign')], ['電腦接上教室端交換器', s => s.link('pc', 'sw')]],
-      allow: (a, b) => { const d = [a.split('.')[0], b.split('.')[0]]; return d.includes('sw') && !d.includes('aggr') ? null : '這一關每台設備都各自接到教室端交換器。' },
+      allow: (a, b) => { const d = [a.split('.')[0], b.split('.')[0]]; return d.includes('sw') && !['aggr', 'core', 'l3'].some(x => d.includes(x)) ? null : '這一關每台設備都各自接到教室端交換器。' },
       extra: '先看設備的電源燈有沒有亮，再按測試',
       hints: [],
       learn: ['<strong>PoE</strong> 用一條網路線同時送資料和電力，AP 和攝影機不必另外找插座。ECS4125-10PL 的 8 個 2.5G 埠都支援 802.3af／at。', '兩個上限：<strong>單埠 30 W</strong>（802.3at）和<strong>整台 120 W</strong>總預算。超過單埠上限的設備怎麼插都沒電；總預算超過時，後接的設備拿不到電。', '耗電大、旁邊有插座的設備，改用變壓器最省事。'],

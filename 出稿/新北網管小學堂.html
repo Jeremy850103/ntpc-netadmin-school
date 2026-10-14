@@ -755,23 +755,21 @@ button:disabled{opacity:.5;cursor:default}
       W: 900, H: 540,
       net: { x: 226, y: 44 },
       rack: { x: 40, y: 98, w: 372, h: 424 },
-      pos: { l3: [60, 122], sw: [60, 262], e1: [450, 120], e2: [600, 120], e3: [750, 120], e4: [525, 300], e5: [675, 300] }
+      pos: { l3: [60, 108], core: [60, 208], aggr: [60, 308], sw: [60, 408], e1: [450, 120], e2: [600, 120], e3: [750, 120], e4: [525, 300], e5: [675, 300] }
     },
     narrow: {
-      W: 440, H: 580,
+      W: 440, H: 780,
       net: { x: 220, y: 42 },
-      rack: { x: 34, y: 98, w: 372, h: 214 },
-      pos: { l3: [54, 108], sw: [54, 212], e1: [14, 340], e2: [170, 340], e3: [326, 340], e4: [92, 452], e5: [248, 452] }
+      rack: { x: 34, y: 98, w: 372, h: 420 },
+      pos: { l3: [54, 108], core: [54, 208], aggr: [54, 308], sw: [54, 408], e1: [14, 540], e2: [170, 540], e3: [326, 540], e4: [92, 652], e5: [248, 652] }
     }
   };
-  // 教室端交換器的 S1 是往副控的 10G 上行；這些關卡把副控與核心省略，直接畫到校端 L3
-  const SWFIX = () => [UPLINK, {
-    a: 'l3.s1',
-    b: 'sw.s1',
-    cls: 'fixed',
-    occupy: true,
-    msg: '這條是教室端交換器經副控、核心回到校端 L3 的上行（畫面省略中間兩層），不用動它。'
-  }];
+  // 機櫃四台：校端 L3（Juniper）→ 核心（MikroTik）→ 副控（MikroTik）→ 教室端（Edgecore）
+  const RACK4 = () => ({ l3: L3(), core: CORE(), aggr: AGGR('B'), sw: EDGE() });
+  const CORE_AGG = (msg) => ({ a: 'core.s2', b: 'aggr.s1', cls: 'fixed', occupy: true, msg: msg || '這條是核心往 B 棟副控的骨幹光纖，已經接好了，不用動它。' });
+  const AGG_SW = (msg) => ({ a: 'aggr.s2', b: 'sw.s1', cls: 'fixed', occupy: true, msg: msg || '這條是教室端往副控的 10G 上行光纖，已經接好了，不用動它。' });
+  // 機櫃四台的固定線：對外、L3↔核心、核心↔副控、副控↔教室端
+  const SWFIX = () => [UPLINK, L3CORE(), CORE_AGG(), AGG_SW()];
   const swAllow = (a, b) => {
     const d = [a.split('.')[0], b.split('.')[0]];
     return d.includes('sw') && d.some(x => x[0] === 'e') ? null : '這一關的設備都接在教室端交換器上。'
@@ -859,7 +857,7 @@ button:disabled{opacity:.5;cursor:default}
       idle: '點一通來電，這裡會顯示對方說了什麼',
       intro: `歡迎來到新北網管小學堂。你剛接下${SCH.name}資訊組長的工作，早上電話就響個不停。先別急著衝出去。排除故障的第一步，是問清楚「範圍有多大」：一台、一間教室、一整棟，還是全校？範圍決定你該先去哪裡。`,
       start: '點每一通來電，聽對方怎麼說，再決定先去哪裡查。五通都決定好，按「對答案」。',
-      devs: { l3: L3(), sw: EDGE(), e1: WDEV('', ''), e2: WDEV('', ''), e3: WDEV('', ''), e4: WDEV('', ''), e5: WDEV('', '') },
+      devs: { ...RACK4(), e1: WDEV('', ''), e2: WDEV('', ''), e3: WDEV('', ''), e4: WDEV('', ''), e5: WDEV('', '') },
       fixed: SWFIX(), lay: L5, need: [], allow: swAllow,
       C: [
         ['三年二班導師', '「我的電腦不能上網。隔壁班的老師說他們都正常，學生的平板也可以。」', 0, '只有一台壞，其他都正常。問題在那台電腦、它的線，或它插的那一埠。'],
@@ -1041,16 +1039,16 @@ button:disabled{opacity:.5;cursor:default}
       intro: `${SCH.name}B 棟 2 樓教室今天完工，壁掛箱裡裝好一台教室端交換器，走廊機櫃有這一棟的副控點交換器。設備都開機了，但還沒有人接線，導師說教室電腦不能上網。`,
       start: '從任一個連接埠按住拖到另一個連接埠，就能拉線。先在選單選線材：電腦用網路線，教室端往副控用光纖。點一下線，再按「拔掉這條線」可以拔掉。',
       kinds: FIBER_UTP_KINDS,
-      devs: { aggr: AGGR('B'), sw: EDGE(), pc: PC() },
-      fixed: [{ a: 'net', b: 'aggr.s1', cls: 'fiber', occupy: true, msg: '這條是副控往核心、再回校端 L3 與教育局的上行光纖，已經接好了，別動它！' }],
+      devs: { l3: L3(), core: CORE(), aggr: AGGR('B'), sw: EDGE(), pc: PC() },
+      fixed: [UPLINK, L3CORE(), CORE_AGG()],
       need: ['sw'],
-      zones: { wide: [[40, 236, 'B 棟 2F 教室壁掛箱'], [40, 390, '教室']], narrow: [[14, 236, 'B 棟 2F 教室壁掛箱'], [14, 400, '教室']] },
+      zones: { wide: [[40, 236, 'B 棟 2F 教室壁掛箱'], [40, 390, '教室']], narrow: [[14, 436, 'B 棟 2F 教室壁掛箱'], [14, 620, '教室']] },
       lay: {
-        wide: { W: 900, H: 540, net: { x: 610, y: 44 }, rack: { x: 470, y: 98, w: 372, h: 200 }, pos: { aggr: [490, 150], sw: [40, 246], pc: [110, 400] } },
-        narrow: { W: 440, H: 700, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 130 }, pos: { aggr: [54, 118], sw: [54, 250], pc: [145, 520] } }
+        wide: { W: 900, H: 540, net: { x: 610, y: 44 }, rack: { x: 470, y: 98, w: 372, h: 330 }, pos: { l3: [490, 108], core: [490, 208], aggr: [490, 308], sw: [40, 246], pc: [110, 400] } },
+        narrow: { W: 440, H: 820, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 330 }, pos: { l3: [54, 108], core: [54, 208], aggr: [54, 308], sw: [54, 450], pc: [145, 640] } }
       },
       goals: [['電腦接上教室端交換器', s => s.link('pc', 'sw')], ['教室端交換器往上接到副控', s => s.link('sw', 'aggr')]],
-      allow: () => null,
+      allow: (a, b) => { const d = [dv(a), dv(b)]; return d.includes('l3') || d.includes('core') ? '教室端的光纖接到該棟的副控。核心與校端 L3 之間的線已經接好，這一關不動。' : null },
       almost: '通了，不過電腦沒有經過教室端交換器。教室還有 AP 和其他設備要接，請改成透過教室端交換器。',
       diagnose: s => !s.cabled('pc') ? '電腦的網路孔是空的，連線燈沒亮。封包連電腦都出不去。' : !s.link('pc', 'sw') ? '電腦的線沒有接到教室端交換器。' : '電腦有連到教室端交換器（燈有亮），但教室端沒有光纖往上接到副控，封包走到教室端就沒路了。',
       hints: ['先看教室電腦：它下方有一個「網路孔」，選「Cat6 網路線」，拉到教室端交換器任一個 P 埠。', '教室端交換器只是把教室的設備接在一起，自己不會上網。選「OS2 單模光纖」，從它黃框的 S1 拉到副控的任一個空 S 埠。', '副控的 S1 是往核心的上行，已經接好了。教室端的光纖接在 S2 到 S6 任一個。'],
@@ -1069,6 +1067,7 @@ button:disabled{opacity:.5;cursor:default}
       start: '教室在左邊，副控機櫃在右邊。收容盒貼著黃色標籤 B2-03，到終端箱找同一個編號。光纖跳線兩端的 LR 模組都已經裝好。',
       kinds: { utp: { name: 'Cat6 網路線', max: 100, far: '100 公尺', cost: '$', media: 'rj' }, jump: { name: 'LC 光纖跳線', note: 'LR 模組已裝', far: '盒到機櫃', max: 10000, cost: '', media: 'sfp', direct: true, sw: 'lr' } },
       devs: {
+        l3: L3(), core: CORE(),
         aggr: AGGR('B'),
         term: {
           name: '光纖終端箱', sub: '每一埠通往一間教室的壁掛收容盒', kind: 'rack', passive: true, w: 332, h: 76,
@@ -1078,16 +1077,17 @@ button:disabled{opacity:.5;cursor:default}
         sw: EDGE(),
         pc: PC()
       },
-      fixed: [{ a: 'net', b: 'aggr.s1', cls: 'fiber', occupy: true, msg: '這條是副控往核心的上行光纖，已經接好了，不用動它。' }, { a: 'box.p', b: 'term.b203', cls: 'wall', hidden: true }],
+      fixed: [UPLINK, L3CORE(), CORE_AGG(), { a: 'box.p', b: 'term.b203', cls: 'wall', hidden: true }],
       need: ['box', 'term', 'sw'],
-      zones: { wide: [[40, 112, 'B 棟 2F 教室 B2-03'], [40, 276, '管路內 4 芯皮纜（2 芯在線、2 芯備援），通往副控機櫃終端箱']], narrow: [[14, 446, '教室 B2-03'], [14, 586, '管路內 4 芯皮纜，通往終端箱']] },
+      zones: { wide: [[40, 112, 'B 棟 2F 教室 B2-03'], [40, 276, '管路內 4 芯皮纜（2 芯在線、2 芯備援），通往副控機櫃終端箱']], narrow: [[14, 646, '教室 B2-03'], [14, 786, '管路內 4 芯皮纜，通往終端箱']] },
       lay: {
-        wide: { W: 900, H: 560, net: { x: 610, y: 44 }, rack: { x: 470, y: 98, w: 372, h: 320 }, pos: { aggr: [490, 112], term: [490, 226], box: [60, 150], sw: [40, 300], pc: [190, 430] } },
-        narrow: { W: 440, H: 760, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 230 }, pos: { aggr: [54, 110], term: [54, 226], box: [40, 466], sw: [54, 350], pc: [250, 600] } }
+        wide: { W: 900, H: 560, net: { x: 610, y: 44 }, rack: { x: 470, y: 98, w: 372, h: 424 }, pos: { l3: [490, 108], core: [490, 208], aggr: [490, 308], term: [490, 420], box: [60, 150], sw: [40, 300], pc: [190, 430] } },
+        narrow: { W: 440, H: 960, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 424 }, pos: { l3: [54, 108], core: [54, 208], aggr: [54, 308], term: [54, 420], box: [40, 666], sw: [54, 550], pc: [250, 800] } }
       },
       goals: [['電腦接上教室端交換器', s => s.link('pc', 'sw')], ['教室端 S1 跳線到收容盒 B2-03', s => s.link('sw', 'box')], ['終端箱 B2-03 跳線到副控', s => s.plink('term.b203', 'aggr')]],
       allow: (a, b) => {
         const d = [a.split('.')[0], b.split('.')[0]], room = x => x === 'pc' || x === 'box' || x === 'sw';
+        if (d.includes('l3') || d.includes('core')) return '終端箱的跳線接到該棟的副控。核心與校端 L3 之間的線已經接好，這一關不動。';
         if (room(d[0]) !== room(d[1])) return '教室和副控機櫃隔著走廊與管路，跳線拉不過去。教室端交換器要接牆上的壁掛收容盒。';
         return null
       },
@@ -1161,6 +1161,7 @@ button:disabled{opacity:.5;cursor:default}
       budget: 120, perPort: 30,
       testHead: '從六台設備各 ping 8.8.8.8', idle: '按「測試連線」會從六台設備各 ping 8.8.8.8',
       devs: {
+        l3: L3(), core: CORE(),
         aggr: AGGR('B'),
         sw: EDGE('教室端交換器', 'ECS4125-10PL · 120 W'),
         ap1: { name: 'Wi-Fi 6 AP 甲', sub: '天花板，需要 26 W（802.3at）', need: 26, kind: 'ap', still: true, w: 200, h: 96, ports: { p: { dx: 156, dy: 60, label: 'PoE 入' } } },
@@ -1170,7 +1171,7 @@ button:disabled{opacity:.5;cursor:default}
         sign: { name: '86 吋數位看板', sub: '牆上，需要 60 W', need: 60, kind: 'box', still: true, w: 200, h: 96, ports: { p: { dx: 156, dy: 60, label: 'PoE 入' } } },
         pc: PC()
       },
-      fixed: [{ a: 'net', b: 'aggr.s1', cls: 'fiber', occupy: true, msg: '這條是副控往核心的上行光纖，不用動它。' }, { a: 'aggr.s2', b: 'sw.s1', cls: 'fixed', occupy: true, msg: '這條是教室端往副控的 10G 上行光纖，已經接好了，不用動它。' }],
+      fixed: SWFIX(),
       sources: ['ap1', 'ap2', 'cam', 'phone', 'sign', 'pc'],
       need: [],
       // 看板一定要插座（60 W 超過單埠上限）；攝影機或電話其中一台旁邊也有插座，總預算剛好夠其他三台
@@ -1189,11 +1190,11 @@ button:disabled{opacity:.5;cursor:default}
         say(d.adapter ? `${d.name}旁邊有插座。接上變壓器後它自己有電，不再占用 PoE 的瓦數。網路線還是要接。` : `拔掉變壓器，${d.name}又要靠 PoE 供電了。`, d.adapter ? 'ok' : '')
       },
       lay: {
-        wide: { W: 900, H: 600, net: { x: 226, y: 44 }, rack: { x: 40, y: 98, w: 372, h: 424 }, pos: { aggr: [60, 122], sw: [60, 262], ap1: [440, 90], ap2: [670, 90], cam: [440, 200], phone: [670, 200], sign: [440, 310], pc: [700, 330] } },
-        narrow: { W: 440, H: 800, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 214 }, pos: { aggr: [54, 108], sw: [54, 212], ap1: [14, 340], ap2: [226, 340], cam: [14, 446], phone: [226, 446], sign: [14, 552], pc: [250, 560] } }
+        wide: { W: 900, H: 600, net: { x: 226, y: 44 }, rack: { x: 40, y: 98, w: 372, h: 424 }, pos: { l3: [60, 108], core: [60, 208], aggr: [60, 308], sw: [60, 408], ap1: [440, 90], ap2: [670, 90], cam: [440, 200], phone: [670, 200], sign: [440, 310], pc: [700, 330] } },
+        narrow: { W: 440, H: 1000, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 420 }, pos: { l3: [54, 108], core: [54, 208], aggr: [54, 308], sw: [54, 408], ap1: [14, 540], ap2: [226, 540], cam: [14, 646], phone: [226, 646], sign: [14, 752], pc: [250, 760] } }
       },
       goals: [['AP 甲有電', s => s.pow('ap1')], ['AP 乙有電', s => s.pow('ap2')], ['走廊攝影機有電', s => s.pow('cam')], ['IP 電話有電', s => s.pow('phone')], ['數位看板有電', s => s.pow('sign')], ['電腦接上教室端交換器', s => s.link('pc', 'sw')]],
-      allow: (a, b) => { const d = [a.split('.')[0], b.split('.')[0]]; return d.includes('sw') && !d.includes('aggr') ? null : '這一關每台設備都各自接到教室端交換器。' },
+      allow: (a, b) => { const d = [a.split('.')[0], b.split('.')[0]]; return d.includes('sw') && !['aggr', 'core', 'l3'].some(x => d.includes(x)) ? null : '這一關每台設備都各自接到教室端交換器。' },
       extra: '先看設備的電源燈有沒有亮，再按測試',
       hints: [],
       learn: ['<strong>PoE</strong> 用一條網路線同時送資料和電力，AP 和攝影機不必另外找插座。ECS4125-10PL 的 8 個 2.5G 埠都支援 802.3af／at。', '兩個上限：<strong>單埠 30 W</strong>（802.3at）和<strong>整台 120 W</strong>總預算。超過單埠上限的設備怎麼插都沒電；總預算超過時，後接的設備拿不到電。', '耗電大、旁邊有插座的設備，改用變壓器最省事。'],
@@ -1328,7 +1329,7 @@ button:disabled{opacity:.5;cursor:default}
       min: 0, max: 5, s2: 'first', firstLabel: '一次就找對', testLabel: '檢查結果',
       intro: '',
       start: '下方終端機有兩張表：校端 L3 的 ARP 表、教室端交換器的 MAC 位址表。先用 IP 找到 MAC，再用 MAC 找到埠，然後點那一埠的線把它拔掉。',
-      devs: { l3: L3(), sw: EDGE(), e1: DESK('設備 ?', '在某間教室'), e2: DESK('設備 ?', '在某間教室'), e3: DESK('設備 ?', '在某間教室'), e4: DESK('設備 ?', '在某間教室'), e5: DESK('設備 ?', '在某間教室') },
+      devs: { ...RACK4(), e1: DESK('設備 ?', '在某間教室'), e2: DESK('設備 ?', '在某間教室'), e3: DESK('設備 ?', '在某間教室'), e4: DESK('設備 ?', '在某間教室'), e5: DESK('設備 ?', '在某間教室') },
       fixed: SWFIX(), lay: L5, need: [], allow: swAllow,
       init() {
         const R = [[NET + '.23', '教務處電腦'], [NET + '.31', '導師電腦'], [NET + '.50', '印表機'], [NET + '.77', '電腦教室 07'], [NET + '.102', '圖書館電腦']];
@@ -1375,10 +1376,10 @@ button:disabled{opacity:.5;cursor:default}
         v1: { name: 'VLAN 1 預設', vlan: 1, sw: 'v1', note: '還原', cost: '' }
       },
       noCut: '這一關不用動線，只要設定每個埠的 VLAN。',
-      devs: (() => { const sw = EDGE(); sw.ports.s1.label = 'Trunk'; return { l3: L3(), sw, e1: DESK('行政 1', '人事室電腦'), e2: DESK('教學 1', '教室電腦'), e3: DESK('行政 2', '出納組電腦'), e4: AP('訪客 AP', '給來賓用'), e5: DESK('教學 2', '教室電腦') } })(),
+      devs: (() => { const sw = EDGE(); sw.ports.s1.label = 'Trunk'; return { l3: L3(), core: CORE(), aggr: AGGR('B'), sw, e1: DESK('行政 1', '人事室電腦'), e2: DESK('教學 1', '教室電腦'), e3: DESK('行政 2', '出納組電腦'), e4: AP('訪客 AP', '給來賓用'), e5: DESK('教學 2', '教室電腦') } })(),
       want: { e1: 10, e2: 20, e3: 10, e4: 30, e5: 20 },
       dept: { 10: '行政', 20: '教學', 30: '訪客' },
-      fixed: (() => { const f = SWFIX(); f[1].msg = 'S1 是往副控的 Trunk，要同時載運 VLAN 10、20、30，已經設好了，不用動。'; return f })(),
+      fixed: (() => { const f = SWFIX(); f[3].msg = 'S1 是往副控的 Trunk，要同時載運 VLAN 10、20、30，已經設好了，不用動。'; return f })(),
       lay: L5, need: [], allow: swAllow,
       init() {
         const ps = shuffle([1, 2, 3, 4, 5, 6]).slice(0, 5), ids = ['e1', 'e2', 'e3', 'e4', 'e5'];
@@ -1415,7 +1416,7 @@ button:disabled{opacity:.5;cursor:default}
       idle: '按「測試速度」，量三台電腦到雷達主機的下載速度',
       intro: '電腦教室的老師說：「有一台電腦網路特別慢，傳個檔案要等好久，可是它明明連得上。」教室端交換器的埠是 2.5G，電腦網卡 2.5G 或 1G 都正常，連線燈有亮不代表沒問題，這次要看燈的顏色。',
       start: '連線燈綠色是 1G 以上，橘色是只有 100 Mbps。先按「測試速度」，再點電腦查看網卡設定。點線可以拔下來檢查。',
-      devs: { l3: L3(), sw: EDGE(), e1: DESK('電腦 A', '電腦教室'), e2: DESK('電腦 B', '電腦教室'), e3: DESK('電腦 C', '電腦教室') },
+      devs: { ...RACK4(), e1: DESK('電腦 A', '電腦教室'), e2: DESK('電腦 B', '電腦教室'), e3: DESK('電腦 C', '電腦教室') },
       fixed: SWFIX(), lay: L5, need: [], allow: swAllow,
       init() {
         const ids = ['e1', 'e2', 'e3'], i = Math.floor(rnd() * 3), cs = ids.map((id, n) => ({ a: id + '.p', b: 'sw.p' + (n + 1) }));
@@ -1557,7 +1558,7 @@ button:disabled{opacity:.5;cursor:default}
       idle: '按「測試連線」會 ping 閘道、校務系統和 8.8.8.8',
       intro: '線接好了、燈也亮了，電腦還是不能上網，因為它還沒有門牌。每台電腦上網都需要三樣東西：IP 位址是門牌，子網路遮罩劃出社區範圍，預設閘道是通往外面的社區大門。新北各校的教學網段是 10.213.校編號.0/24，閘道在校端 L3 路由器上。',
       start: '點「新電腦」打開設定，把三個欄位選好。畫面上有這間教室的網段資料，旁邊兩台電腦的 IP 已經有人用了。',
-      devs: { l3: L3(), sw: EDGE(), e1: DESK('新電腦', '還沒設定'), e2: DESK('教務處電腦', NET + '.23'), e3: DESK('導師電腦', NET + '.31') },
+      devs: { ...RACK4(), e1: DESK('新電腦', '還沒設定'), e2: DESK('教務處電腦', NET + '.23'), e3: DESK('導師電腦', NET + '.31') },
       zones: { wide: [[450, 440, `這間教室的網段：${NET}.0，遮罩 255.255.255.0`], [450, 462, `閘道：${GW}（校端 L3 路由器）`], [450, 484, `可用的空門牌：${NET}.60`]], narrow: [[14, 460, `網段：${NET}.0，遮罩 255.255.255.0`], [14, 482, `閘道：${GW}`], [14, 504, `可用的空門牌：${NET}.60`]] },
       fixed: SWFIX(), lay: L5, need: [], allow: swAllow,
       init() { const d = this.devs.e1; d.cfg = { ip: '', mask: '', gw: '' }; d.subfn = () => d.cfg.ip || '還沒設定'; return { cables: [1, 2, 3].map(i => ({ a: 'e' + i + '.p', b: 'sw.p' + i })), intro: this.intro } },
@@ -1591,7 +1592,7 @@ button:disabled{opacity:.5;cursor:default}
       idle: '五個目的地都判斷完，按「對答案」',
       intro: '電腦 A 每次要送資料，都會先問自己：對方是同社區的鄰居，還是外面的人？是鄰居就直接送，不是就交給閘道。它靠子網路遮罩來判斷。光纖到班之後各棟是獨立子網路，跨棟的封包會交給該棟副控轉送，對外的再經核心到校端 L3。',
       start: '看畫面上電腦 A 的 IP 和遮罩，再點每個目的地，判斷電腦 A 會直接送，還是交給閘道。',
-      devs: { l3: L3(), sw: EDGE(), e1: DEST('同棟教學電腦', NET + '.23'), e2: DEST('鄰棟第二教學網段', SEG.user + '.251.40'), e3: DEST('行政處室', ADM + '.9'), e4: DEST('校務系統', SRV + '.5'), e5: DEST('教育局 DNS', DNS1) },
+      devs: { ...RACK4(), e1: DEST('同棟教學電腦', NET + '.23'), e2: DEST('鄰棟第二教學網段', SEG.user + '.251.40'), e3: DEST('行政處室', ADM + '.9'), e4: DEST('校務系統', SRV + '.5'), e5: DEST('教育局 DNS', DNS1) },
       fixed: SWFIX(), lay: L5, need: [], allow: swAllow,
       init() {
         this.mask = rnd() < .5 ? '255.255.255.0' : '255.255.252.0';
@@ -1631,11 +1632,11 @@ button:disabled{opacity:.5;cursor:default}
       idle: '按「測試連線」會從三台電腦各 ping 8.8.8.8',
       intro: '大部分電腦不用手動設定 IP，開機時會自動向 DHCP 伺服器領一個。這所學校的 DHCP 伺服器在校端 L3 路由器上；光纖到班之後各棟副控以 DHCP Relay 把教室的請求轉送到校端 L3。這間教室有電腦不能上網。',
       start: '先按「測試連線」看是哪幾台。點電腦可以執行 ipconfig，點校端 L3、副控、教室端可以查看它們的狀態。',
-      devs: (() => { const l3 = L3(), aggr = AGGR('B'), sw = EDGE(); l3.tap = aggr.tap = sw.tap = true; return { l3, aggr, sw, e1: DESK('電腦 A', ''), e2: DESK('電腦 B', ''), e3: DESK('電腦 C', '') } })(),
-      fixed: [UPLINK, L3CORE('aggr.s1', '校端 L3 經核心到 B 棟副控的骨幹（畫面省略核心），不用動。'), { a: 'aggr.s2', b: 'sw.s1', cls: 'fixed', occupy: true, msg: '教室端往副控的 10G 上行，不用動。' }],
+      devs: (() => { const l3 = L3(), core = CORE(), aggr = AGGR('B'), sw = EDGE(); l3.tap = aggr.tap = sw.tap = true; return { l3, core, aggr, sw, e1: DESK('電腦 A', ''), e2: DESK('電腦 B', ''), e3: DESK('電腦 C', '') } })(),
+      fixed: SWFIX(),
       lay: {
-        wide: { W: 900, H: 540, net: { x: 226, y: 44 }, rack: { x: 40, y: 98, w: 372, h: 424 }, pos: { l3: [60, 112], aggr: [60, 214], sw: [60, 320], e1: [450, 120], e2: [600, 120], e3: [750, 120] } },
-        narrow: { W: 440, H: 620, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 320 }, pos: { l3: [54, 108], aggr: [54, 212], sw: [54, 316], e1: [14, 460], e2: [170, 460], e3: [326, 460] } }
+        wide: { W: 900, H: 540, net: { x: 226, y: 44 }, rack: { x: 40, y: 98, w: 372, h: 424 }, pos: { l3: [60, 108], core: [60, 208], aggr: [60, 308], sw: [60, 408], e1: [450, 120], e2: [600, 120], e3: [750, 120] } },
+        narrow: { W: 440, H: 700, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 420 }, pos: { l3: [54, 108], core: [54, 208], aggr: [54, 308], sw: [54, 408], e1: [14, 540], e2: [170, 540], e3: [326, 540] } }
       },
       need: [], allow: swAllow,
       init() {
@@ -1710,7 +1711,7 @@ button:disabled{opacity:.5;cursor:default}
       idle: '按「測試連線」會從三台電腦各 ping 校務系統',
       intro: `三年二班的老師說，教室的電腦有的可以上網、有的不行，不行的那幾台連校務系統都打不開。${NMS}跳出「非法 DHCP」告警。上週有老師嫌教室收訊不好，自己帶了一台機器來插。`,
       start: '點電腦可以執行 ipconfig 和 arp -a，點教室端交換器可以查看 MAC 位址表，也可以啟用 DHCP Snooping。兩台「設備 ?」在隔壁教室，現場看不到。',
-      devs: (() => { const sw = EDGE(); sw.tap = true; return { l3: L3(), sw, e1: DESK('電腦 A', ''), e2: DESK('電腦 B', ''), e3: DESK('電腦 C', ''), e4: BOX('設備 ?', '在隔壁教室'), e5: BOX('設備 ?', '在隔壁教室') } })(),
+      devs: (() => { const sw = EDGE(); sw.tap = true; return { l3: L3(), core: CORE(), aggr: AGGR('B'), sw, e1: DESK('電腦 A', ''), e2: DESK('電腦 B', ''), e3: DESK('電腦 C', ''), e4: BOX('設備 ?', '在隔壁教室'), e5: BOX('設備 ?', '在隔壁教室') } })(),
       fixed: SWFIX(), lay: L5, need: [], allow: swAllow,
       init() {
         const ids = ['e1', 'e2', 'e3', 'e4', 'e5'], macs = shuffle(['3c-52-82-1a-9f-04', 'a4-bb-6d-70-21-c8', '00-1b-a9-5e-33-90', 'd8-9e-f3-0c-47-1e', '14-eb-b6-3c-90-d2']), ports = shuffle([1, 2, 3, 4, 5, 6]);
@@ -1769,11 +1770,11 @@ button:disabled{opacity:.5;cursor:default}
       idle: '按「測試連線」會從兩台電腦各 ping 閘道與 8.8.8.8',
       intro: `今天是 B 棟切換日：依切換計畫，B 棟教學子網路的閘道 ${GW} 要從校端 L3 路由器移到新的 B 棟副控。廠商把副控的 VLAN 20 介面設好啟用了，但校端 L3 上同一個介面還開著。${NMS}跳出「IP 衝突」告警，B 棟電腦時通時斷。`,
       start: '點校端 L3 和副控，先查看 VLAN 20 介面的設定。改設定之前先備份，照切換計畫把閘道留在副控、停用校端 L3 的那個介面。',
-      devs: (() => { const l3 = L3(), aggr = AGGR('B'), sw = EDGE(); l3.tap = aggr.tap = true; return { l3, aggr, sw, e1: DESK('電腦 A', NET + '.101'), e2: DESK('電腦 B', NET + '.102') } })(),
-      fixed: [UPLINK, L3CORE('aggr.s1', '校端 L3 經核心到 B 棟副控的骨幹，不用動。'), { a: 'aggr.s2', b: 'sw.s1', cls: 'fixed', occupy: true, msg: '教室端往副控的上行，不用動。' }],
+      devs: (() => { const l3 = L3(), core = CORE(), aggr = AGGR('B'), sw = EDGE(); l3.tap = aggr.tap = true; return { l3, core, aggr, sw, e1: DESK('電腦 A', NET + '.101'), e2: DESK('電腦 B', NET + '.102') } })(),
+      fixed: SWFIX(),
       lay: {
-        wide: { W: 900, H: 540, net: { x: 226, y: 44 }, rack: { x: 40, y: 98, w: 372, h: 424 }, pos: { l3: [60, 112], aggr: [60, 214], sw: [60, 320], e1: [500, 140], e2: [700, 140] } },
-        narrow: { W: 440, H: 600, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 320 }, pos: { l3: [54, 108], aggr: [54, 212], sw: [54, 316], e1: [60, 460], e2: [250, 460] } }
+        wide: { W: 900, H: 540, net: { x: 226, y: 44 }, rack: { x: 40, y: 98, w: 372, h: 424 }, pos: { l3: [60, 108], core: [60, 208], aggr: [60, 308], sw: [60, 408], e1: [500, 140], e2: [700, 140] } },
+        narrow: { W: 440, H: 680, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 420 }, pos: { l3: [54, 108], core: [54, 208], aggr: [54, 308], sw: [54, 408], e1: [60, 540], e2: [250, 540] } }
       },
       zones: { wide: [[450, 300, '切換計畫（B 棟教學 VLAN 20）：'], [450, 322, `1. 備份校端 L3 與副控設定　2. 副控 VLAN 20 介面 ${GW} 啟用`], [450, 344, '3. 停用校端 L3 的 VLAN 20 介面　4. 教室電腦重新領 IP 並測試']], narrow: [] },
       need: [], allow: swAllow,
@@ -1830,7 +1831,7 @@ button:disabled{opacity:.5;cursor:default}
       idle: '按「測試連線」會從四台電腦各 ping 閘道、校務系統、外網',
       intro: '',
       start: '先按「測試連線」看症狀。點電腦可以看到並修改它的 IP 設定。把有問題的和正常的放在一起比。',
-      devs: { l3: L3(), sw: EDGE(), e1: DESK('電腦 A', ''), e2: DESK('電腦 B', ''), e3: DESK('電腦 C', ''), e4: DESK('電腦 D', '') },
+      devs: { ...RACK4(), e1: DESK('電腦 A', ''), e2: DESK('電腦 B', ''), e3: DESK('電腦 C', ''), e4: DESK('電腦 D', '') },
       zones: () => { const t = 'A .' + host(61) + '　B .' + host(62) + '　C .' + host(63) + '　D .' + host(64); return { wide: [[450, 440, '固定 IP 分配表：' + t], [450, 462, `遮罩 255.255.255.0，閘道 ${GW}`]], narrow: [[14, 574, '分配表：' + t], [14, 596, `遮罩 255.255.255.0，閘道 ${GW}`]] } },
       fixed: SWFIX(), lay: { wide: L5.wide, narrow: Object.assign({}, L5.narrow, { H: 620 }) }, need: [], allow: swAllow,
       init() {
@@ -1879,7 +1880,7 @@ button:disabled{opacity:.5;cursor:default}
       idle: '按「測試連線」會 ping 8.8.8.8，再開啟 www.google.com',
       intro: '老師說：「網路明明有通，LINE 還能用，可是瀏覽器每個網址都打不開。」電腦上網其實靠的是 IP，我們打的網址要先問 DNS 這個查號台，換成 IP 才連得過去。新北各校的電腦依規定使用教育局指定的 DNS。',
       start: '點「教室電腦」。先用 ping 和 nslookup 找出問題在哪一段，再決定要改什麼設定。',
-      devs: { l3: L3(), sw: EDGE(), e1: DESK('教室電腦', NET + '.60') },
+      devs: { ...RACK4(), e1: DESK('教室電腦', NET + '.60') },
       zones: { wide: [[450, 440, `教育局指定 DNS：${DNS1}`], [450, 462, '備用：8.8.8.8（Google 公用 DNS）']], narrow: [[14, 460, `教育局指定 DNS：${DNS1}`], [14, 482, '備用：8.8.8.8']] },
       fixed: SWFIX(), lay: L5, need: [], allow: swAllow,
       init() { this.devs.e1.cfg = { dns: rnd() < .5 ? '1.2.3.4' : SRV + '.54' }; this.diag = false; this.early = false; return { cables: [{ a: 'e1.p', b: 'sw.p1' }], intro: this.intro } },
@@ -1918,7 +1919,7 @@ button:disabled{opacity:.5;cursor:default}
       idle: '按「從校外掃描」，看校外能連到哪些通訊埠',
       intro: '',
       start: '點校端 L3 路由器，逐一決定每個通訊埠要不要對校外開放。先想清楚：這台伺服器有誰需要從校外連進來？點伺服器可以再看一次它的用途。',
-      devs: (() => { const l3 = L3(); l3.tap = true; return { l3, sw: EDGE(), e1: DEST('學校網站', SRV + '.5') } })(),
+      devs: (() => { const l3 = L3(); l3.tap = true; return { l3, core: CORE(), aggr: AGGR('B'), sw: EDGE(), e1: DEST('學校網站', SRV + '.5') } })(),
       zones: { wide: [[450, 440, '80 HTTP：一般網頁　443 HTTPS：加密網頁'], [450, 462, '22 SSH：加密的遠端管理　23 Telnet：不加密的遠端管理'], [450, 484, '3389 遠端桌面']], narrow: [[14, 460, '80 HTTP　443 HTTPS　3389 遠端桌面'], [14, 482, '22 SSH：加密的遠端管理'], [14, 504, '23 Telnet：不加密的遠端管理']] },
       fixed: SWFIX(), lay: L5, need: [], allow: swAllow,
       SC: {
@@ -1978,7 +1979,7 @@ button:disabled{opacity:.5;cursor:default}
       idle: '按「測試連線」會從筆電 ping 8.8.8.8，再開啟 www.google.com',
       intro: '老師拿著筆電走過來：「Wi-Fi 明明有連上，訊號滿格，為什麼就是不能上網？」這是學校網管最常聽到的一句話。訊號滿格只代表第一層沒問題，要一層一層往上查。',
       start: '點筆電，先執行 ipconfig /all 看它拿到什麼 IP，再做 ping 測試。DHCP 設定在校端 L3 路由器上，畫面上有前任資訊組長留下的交接筆記。',
-      devs: (() => { const l3 = L3(); l3.tap = true; const lap = LAPTOP('老師的筆電', ''); lap.tag = 'Wi-Fi 已連線，訊號滿格'; return { l3, sw: EDGE(), e1: AP('無線 AP', 'YHPS-Teacher'), e2: lap } })(),
+      devs: (() => { const l3 = L3(); l3.tap = true; const lap = LAPTOP('老師的筆電', ''); lap.tag = 'Wi-Fi 已連線，訊號滿格'; return { l3, core: CORE(), aggr: AGGR('B'), sw: EDGE(), e1: AP('無線 AP', 'YHPS-Teacher'), e2: lap } })(),
       zones: NOTE, fixed: SWFIX(), lay: L5, need: [], allow: swAllow,
       init() {
         const f = this.cause = ['pool', 'dhcpdns', 'manual'][Math.floor(rnd() * 3)], l3 = this.devs.l3, d = this.devs.e2;
@@ -2044,7 +2045,7 @@ button:disabled{opacity:.5;cursor:default}
       idle: '按「測試連線」會開啟學校首頁、Google、YouTube',
       intro: '電腦教室的老師說：「好奇怪，學校首頁打得開，可是 Google 和 YouTube 都不行。」能上部分網站，代表線路、IP、閘道基本都通，問題一定在比較上面的幾層。',
       start: '點電腦，用 nslookup 和 tracert 判斷是名稱查不到，還是路被擋住。校內 DNS 伺服器的轉送設定在它自己身上，存取控制規則在校端 L3，畫面上有前任資訊組長留下的交接筆記。',
-      devs: (() => { const l3 = L3(); l3.tap = true; const dns = BOX('校內 DNS 伺服器', SRV + '.53'); dns.tap = true; return { l3, sw: EDGE(), e1: DESK('教室電腦', NET + '.60'), e2: dns } })(),
+      devs: (() => { const l3 = L3(); l3.tap = true; const dns = BOX('校內 DNS 伺服器', SRV + '.53'); dns.tap = true; return { l3, core: CORE(), aggr: AGGR('B'), sw: EDGE(), e1: DESK('教室電腦', NET + '.60'), e2: dns } })(),
       zones: NOTE, fixed: SWFIX(), lay: L5, need: [], allow: swAllow,
       init() {
         const f = this.orig = rnd() < .5 ? 'dns' : 'rule';
@@ -2106,7 +2107,7 @@ button:disabled{opacity:.5;cursor:default}
       idle: '五台設備都設定好，按「測試連線」',
       intro: '學校的無線網路有四個名字（SSID），各自通往不同的隔間：教師、學生、訪客、設備。頻段則像車道：2.4 GHz 是鄉間小路，慢又擠，但穿牆能力強、傳得遠；5 GHz 是高速公路，快，但隔一道牆就弱很多。',
       start: '點每一台設備，幫它選 SSID 和頻段。注意設備下方的說明：有的只支援 2.4 GHz，有的離 AP 很遠。',
-      devs: { l3: L3(), sw: EDGE(), e1: LAPTOP('老師筆電', '支援 5 GHz'), e2: WDEV('學生平板', '支援 5 GHz'), e3: WDEV('來賓手機', '來賓自己帶的'), e4: WDEV('舊印表機', '只支援 2.4 GHz'), e5: WDEV('遠端感測器', '隔兩道牆') },
+      devs: { ...RACK4(), e1: LAPTOP('老師筆電', '支援 5 GHz'), e2: WDEV('學生平板', '支援 5 GHz'), e3: WDEV('來賓手機', '來賓自己帶的'), e4: WDEV('舊印表機', '只支援 2.4 GHz'), e5: WDEV('遠端感測器', '隔兩道牆') },
       POOL: {
         t: [{ name: '老師筆電', sub: '支援 5 GHz', lap: 1, band: '5 GHz' }, { name: '老師的舊筆電', sub: '只支援 2.4 GHz', lap: 1, band: '2.4 GHz', why: 'old' }, { name: '老師筆電', sub: '在走廊盡頭的辦公室', lap: 1, band: '2.4 GHz', why: 'far' }],
         s: [{ name: '學生平板', sub: '支援 5 GHz', band: '5 GHz' }, { name: '學生平板', sub: '在隔兩道牆的教室', band: '2.4 GHz', why: 'far' }, { name: '學生筆電', sub: '支援 5 GHz', lap: 1, band: '5 GHz' }],
@@ -2158,7 +2159,7 @@ button:disabled{opacity:.5;cursor:default}
       idle: '按「量測訊號」，看每間教室的訊號強度和干擾',
       intro: '三間教室各有一台 2.4 GHz 的 AP，老師都說「訊號有，但常常卡住」。當初安裝的人圖方便，頻道隨手設，有的 AP 還被塞進櫃子裡。光纖到班完工後 AP 會改接教室端的 PoE 埠，這是把位置和頻道一起整理的好時機。',
       start: '先看畫面下方的教室排列，哪幾間相鄰。點 AP 可以改頻道和擺放位置。先按「量測訊號」看現況。',
-      devs: { l3: L3(), sw: EDGE(), e1: AP('教室 A', ''), e2: AP('教室 B', ''), e3: AP('教室 C', '') },
+      devs: { ...RACK4(), e1: AP('教室 A', ''), e2: AP('教室 B', ''), e3: AP('教室 C', '') },
       ROOMS: [{ pairs: [['e1', 'e2'], ['e2', 'e3']], wide: '教室排列：A ｜ B ｜ C（相鄰的會互相干擾）', narrow: '教室排列：A ｜ B ｜ C', ex: '1、6、11，或 1、6、1' }, { pairs: [['e1', 'e3'], ['e3', 'e2']], wide: '教室排列：A ｜ C ｜ B（相鄰的會互相干擾）', narrow: '教室排列：A ｜ C ｜ B', ex: 'A 1、C 6、B 11，或 A 1、C 6、B 1' }, { pairs: [['e1', 'e2'], ['e2', 'e3'], ['e1', 'e3']], wide: 'A、B 相鄰，C 在兩間的正上方：三間兩兩互相干擾', narrow: 'A、B 相鄰，C 在正上方：兩兩干擾', ex: '1、6、11，三間都要不一樣' }],
       fixed: SWFIX(), lay: L5, need: [], allow: swAllow,
       init() {
@@ -2240,7 +2241,7 @@ button:disabled{opacity:.5;cursor:default}
       idle: '按「測試連線」會從平板和筆電各開啟校務系統',
       intro: '老師很困惑：「明明在同一間教室、連同一台 AP，為什麼學生的平板可以上網，我的筆電就是不行？」同一台 AP 會發出好幾個 SSID，每個 SSID 通往不同的隔間，規則也不同。',
       start: '點筆電和平板，比較它們連的 SSID 和拿到的 IP。AP 接在教室端交換器的 P1。',
-      devs: (() => { const sw = EDGE(); sw.tap = true; sw.ports.p1.label = 'P1 Trunk'; const lap = LAPTOP('老師的筆電', ''); return { l3: L3(), sw, e1: AP('無線 AP', '發出多個 SSID'), e2: lap, e3: WDEV('學生平板', 'YHPS-Student') } })(),
+      devs: (() => { const sw = EDGE(); sw.tap = true; sw.ports.p1.label = 'P1 Trunk'; const lap = LAPTOP('老師的筆電', ''); return { l3: L3(), core: CORE(), aggr: AGGR('B'), sw, e1: AP('無線 AP', '發出多個 SSID'), e2: lap, e3: WDEV('學生平板', 'YHPS-Student') } })(),
       fixed: SWFIX(), lay: L5, need: [], allow: swAllow,
       init() {
         const f = this.cause = ['guest', 'auth', 'trunk'][Math.floor(rnd() * 3)], d = this.devs.e2;
@@ -2299,11 +2300,11 @@ button:disabled{opacity:.5;cursor:default}
       idle: `點一張學校卡，這裡會顯示${NMS}「單位資訊」那一列的內容`,
       intro: `你今天在教育網路中心值班。${NMS}的「單位資訊」頁每校一列：今日告警項次、各類告警、網路設備離線數量、Switch 與 AP 的離線／告警／總數。313 校不可能一校一校看，要先分級：對外離線或整校離線的先處理，單一設備離線列入當日巡檢，正常的不動。`,
       start: '點每一張學校卡，看它的數字，決定「立即處理」「列入今日巡檢」或「正常不處理」。六張都決定好，按「對答案」。',
-      devs: { l3: L3(), sw: EDGE(), e1: WDEV('', ''), e2: WDEV('', ''), e3: WDEV('', ''), e4: WDEV('', ''), e5: WDEV('', ''), e6: WDEV('', '') },
+      devs: { ...RACK4(), e1: WDEV('', ''), e2: WDEV('', ''), e3: WDEV('', ''), e4: WDEV('', ''), e5: WDEV('', ''), e6: WDEV('', '') },
       fixed: SWFIX(),
       lay: {
-        wide: { W: 900, H: 540, net: { x: 226, y: 44 }, rack: { x: 40, y: 98, w: 372, h: 424 }, pos: { l3: [60, 122], sw: [60, 262], e1: [450, 110], e2: [600, 110], e3: [750, 110], e4: [450, 290], e5: [600, 290], e6: [750, 290] } },
-        narrow: { W: 440, H: 640, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 214 }, pos: { l3: [54, 108], sw: [54, 212], e1: [14, 340], e2: [170, 340], e3: [326, 340], e4: [14, 500], e5: [170, 500], e6: [326, 500] } }
+        wide: { W: 900, H: 540, net: { x: 226, y: 44 }, rack: { x: 40, y: 98, w: 372, h: 424 }, pos: { l3: [60, 108], core: [60, 208], aggr: [60, 308], sw: [60, 408], e1: [450, 110], e2: [600, 110], e3: [750, 110], e4: [450, 290], e5: [600, 290], e6: [750, 290] } },
+        narrow: { W: 440, H: 840, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 420 }, pos: { l3: [54, 108], core: [54, 208], aggr: [54, 308], sw: [54, 408], e1: [14, 540], e2: [170, 540], e3: [326, 540], e4: [14, 700], e5: [170, 700], e6: [326, 700] } }
       },
       need: [], allow: () => '這一關不用接線。點學校卡。', noCut: '這一關不用動線。',
       // [學校, 對外設備離線, 離線 switch, 離線 AP, 總 switch, 總 AP, 今日告警, 答案(0 立即 1 巡檢 2 正常), 說明]
@@ -2396,11 +2397,11 @@ button:disabled{opacity:.5;cursor:default}
       idle: '點一筆告警，這裡會顯示告警內容',
       intro: `${NMS}會發出十一類告警：IP 衝突、非法 IP（fake ARP）、非法 DHCP、IP 流量偵測、Port 流量偵測、Port Loop、CPU 負載、RAM 負載、CRC Error、離線、未知設備。每一類的處理方式不同，有的自己到現場，有的要請廠商，有的要回報教育網路中心。`,
       start: '點每一筆告警，看內容，決定怎麼處理。六筆都決定好，按「對答案」。',
-      devs: { l3: L3(), sw: EDGE(), e1: WDEV('', ''), e2: WDEV('', ''), e3: WDEV('', ''), e4: WDEV('', ''), e5: WDEV('', ''), e6: WDEV('', '') },
+      devs: { ...RACK4(), e1: WDEV('', ''), e2: WDEV('', ''), e3: WDEV('', ''), e4: WDEV('', ''), e5: WDEV('', ''), e6: WDEV('', '') },
       fixed: SWFIX(),
       lay: {
-        wide: { W: 900, H: 540, net: { x: 226, y: 44 }, rack: { x: 40, y: 98, w: 372, h: 424 }, pos: { l3: [60, 122], sw: [60, 262], e1: [450, 110], e2: [600, 110], e3: [750, 110], e4: [450, 290], e5: [600, 290], e6: [750, 290] } },
-        narrow: { W: 440, H: 640, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 214 }, pos: { l3: [54, 108], sw: [54, 212], e1: [14, 340], e2: [170, 340], e3: [326, 340], e4: [14, 500], e5: [170, 500], e6: [326, 500] } }
+        wide: { W: 900, H: 540, net: { x: 226, y: 44 }, rack: { x: 40, y: 98, w: 372, h: 424 }, pos: { l3: [60, 108], core: [60, 208], aggr: [60, 308], sw: [60, 408], e1: [450, 110], e2: [600, 110], e3: [750, 110], e4: [450, 290], e5: [600, 290], e6: [750, 290] } },
+        narrow: { W: 440, H: 840, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 420 }, pos: { l3: [54, 108], core: [54, 208], aggr: [54, 308], sw: [54, 408], e1: [14, 540], e2: [170, 540], e3: [326, 540], e4: [14, 700], e5: [170, 700], e6: [326, 700] } }
       },
       need: [], allow: () => '這一關不用接線。', noCut: '這一關不用動線。',
       O: ['自己到現場處理', '請光纖到班維護廠商', '請既有網路維護廠商', '回報教育網路中心', '先觀察，暫不處理'],
@@ -2455,11 +2456,11 @@ button:disabled{opacity:.5;cursor:default}
       idle: '按「測試連線」會從 B 棟教室電腦 ping 閘道與 8.8.8.8',
       intro: '光纖到班案的資產管理平台每週自動備份核心、副控、教室端的設定，預設保留 52 份，可以把「目前設定」和最新備份逐行比對。今天早上 B 棟一間教室突然不能上網，前一晚廠商在副控上做過調整。',
       start: '點 B 棟副控，先選「比對目前設定與最新備份」看哪幾行變了，再決定要還原到哪一版。',
-      devs: (() => { const aggr = AGGR('B'); aggr.tap = true; return { aggr, sw: EDGE(), e1: DESK('B203 教室電腦', NET + '.60') } })(),
-      fixed: [{ a: 'net', b: 'aggr.s1', cls: 'fiber', occupy: true, msg: '副控往核心的上行，不用動。' }, { a: 'aggr.s2', b: 'sw.s1', cls: 'fixed', occupy: true, msg: '教室端往副控的上行，不用動。' }],
+      devs: (() => { const aggr = AGGR('B'); aggr.tap = true; return { l3: L3(), core: CORE(), aggr, sw: EDGE(), e1: DESK('B203 教室電腦', NET + '.60') } })(),
+      fixed: SWFIX(),
       lay: {
-        wide: { W: 900, H: 460, net: { x: 226, y: 44 }, rack: { x: 40, y: 98, w: 372, h: 300 }, pos: { aggr: [60, 122], sw: [60, 262], e1: [600, 150] } },
-        narrow: { W: 440, H: 540, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 214 }, pos: { aggr: [54, 108], sw: [54, 212], e1: [150, 400] } }
+        wide: { W: 900, H: 540, net: { x: 226, y: 44 }, rack: { x: 40, y: 98, w: 372, h: 424 }, pos: { l3: [60, 108], core: [60, 208], aggr: [60, 308], sw: [60, 408], e1: [600, 150] } },
+        narrow: { W: 440, H: 680, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 420 }, pos: { l3: [54, 108], core: [54, 208], aggr: [54, 308], sw: [54, 408], e1: [150, 540] } }
       },
       need: [], allow: () => null,
       DIFFS: {
@@ -2553,11 +2554,11 @@ button:disabled{opacity:.5;cursor:default}
       idle: '點設備，填它在盤點計畫裡的欄位',
       intro: `${NMS}的「盤點計畫」由各校自行登錄每一台網路設備：連接層次、廠牌、型號、購置年份、支援 IPv6、支援 SNMP、介面數量、最高頻寬。全市 8,585 筆裡常見的錯誤：購置年份填成安裝位置、層次填錯、支援 IPv6 一律填 N。盤點表是教育局規劃汰換與光纖到班批次的依據，要填對。`,
       start: '點兩台設備，依面板與標籤把欄位填對。畫面上有兩台的實際資料。',
-      devs: (() => { const l3 = L3(), sw = EDGE('教室端交換器', `ECS4125-10PL · ${SCH.abbr}-E-B203`); l3.tap = sw.tap = true; return { l3, sw } })(),
-      fixed: [UPLINK, { a: 'l3.s1', b: 'sw.s1', cls: 'fixed', occupy: true, msg: '這一關不用動線。' }],
+      devs: (() => { const l3 = L3(), sw = EDGE('教室端交換器', `ECS4125-10PL · ${SCH.abbr}-E-B203`); l3.tap = sw.tap = true; return { l3, core: CORE(), aggr: AGGR('B'), sw } })(),
+      fixed: [UPLINK, L3CORE('core.s1', '這一關不用動線。'), CORE_AGG('這一關不用動線。'), AGG_SW('這一關不用動線。')],
       lay: {
-        wide: { W: 900, H: 420, net: { x: 226, y: 44 }, rack: { x: 40, y: 98, w: 372, h: 300 }, pos: { l3: [60, 122], sw: [60, 262] } },
-        narrow: { W: 440, H: 440, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 300 }, pos: { l3: [54, 122], sw: [54, 262] } }
+        wide: { W: 900, H: 540, net: { x: 226, y: 44 }, rack: { x: 40, y: 98, w: 372, h: 424 }, pos: { l3: [60, 108], core: [60, 208], aggr: [60, 308], sw: [60, 408] } },
+        narrow: { W: 440, H: 560, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 424 }, pos: { l3: [54, 108], core: [54, 208], aggr: [54, 308], sw: [54, 408] } }
       },
       zones: { wide: [[450, 120, '實際資料：'], [450, 146, '校端 L3：Juniper EX3400-24T，113 年購置，24 埠 1G＋4 埠 10G，支援 IPv6 與 SNMP'], [450, 172, '直接接教育局骨幹，是校內第 1 層'], [450, 210, '教室端：Edgecore ECS4125-10PL，115 年光纖到班案購置'], [450, 236, '8 埠 2.5G＋2 埠 10G，支援 IPv6 與 SNMP，接在副控（第 2 層）底下']], narrow: [] },
       need: [], allow: () => '這一關不用接線。', noCut: '這一關不用動線。',
@@ -2600,7 +2601,7 @@ button:disabled{opacity:.5;cursor:default}
       idle: '做完測試、填好回報內容，按「送出回報」',
       intro: `${NMS}跳出「對外設備離線」與「Radar 異常」：雲海國小整校離線。學校打來說機房的燈都亮著，校內的校務系統和印表機也都能用，只是連不出去。有些問題不在學校裡面，你修不了，要請教育網路中心處理。回報時講得越清楚，對方處理得越快。`,
       start: '點教室電腦做四項測試，判斷問題在校內還是校外。再點「教育網路中心」，把測試結果填進回報內容。',
-      devs: (() => { const l3 = L3(); l3.tap = true; const c = WDEV('教育網路中心', '服務電話'); c.tag = '點我回報'; return { l3, sw: EDGE(), e1: DESK('教室電腦', NET + '.60'), e2: c } })(),
+      devs: (() => { const l3 = L3(); l3.tap = true; const c = WDEV('教育網路中心', '服務電話'); c.tag = '點我回報'; return { l3, core: CORE(), aggr: AGGR('B'), sw: EDGE(), e1: DESK('教室電腦', NET + '.60'), e2: c } })(),
       fixed: SWFIX(), lay: L5, need: [], allow: swAllow,
       init() {
         this.hop = rnd() < .5 ? 1 : 2;
@@ -2658,7 +2659,7 @@ button:disabled{opacity:.5;cursor:default}
       idle: '按「測試連線」會從報修電腦開啟網頁',
       intro: '',
       start: '照 SOP 由下往上：看連線燈，ipconfig 看 IP，ping 閘道、ping 外面的 IP、ping 網址。哪一步不通，問題就在那一層。所有設備都可以點，畫面上有前任資訊組長留下的交接筆記。',
-      devs: (() => { const l3 = L3(), sw = EDGE(); l3.tap = sw.tap = true; return { l3, sw, e1: DESK('報修電腦', ''), e2: DESK('隔壁電腦', '') } })(),
+      devs: (() => { const l3 = L3(), sw = EDGE(); l3.tap = sw.tap = true; return { l3, core: CORE(), aggr: AGGR('B'), sw, e1: DESK('報修電腦', ''), e2: DESK('隔壁電腦', '') } })(),
       zones: NOTE, fixed: SWFIX(), lay: L5, need: [], allow: swAllow,
       init() {
         const f = this.cause = ['loose', 'vlan', 'pool', 'dns', 'rule'][Math.floor(rnd() * 5)], d = this.devs.e1, n = this.devs.e2, cs = [{ a: 'e1.p', b: 'sw.p1' }, { a: 'e2.p', b: 'sw.p2' }];
@@ -2739,16 +2740,16 @@ button:disabled{opacity:.5;cursor:default}
       idle: '做完測試、填好回報內容，按「送出回報」',
       intro: '新北的校園網路有三個報修窗口：光纖到班維護廠商（核心、副控、教室端與光纖）、既有網路維護廠商（校端 L3 與既有設備）、教育網路中心（對外線路與骨幹）。找錯窗口，對方會請你再找別人，多耗半天。這一關的故障隨機落在三者之一。',
       start: '點教室電腦做四項測試，再看智慧網管的告警，判斷問題在哪一層、是誰的設備。點「回報」填寫內容和通報對象。',
-      devs: (() => { const l3 = L3(), core = CORE(); l3.tap = core.tap = true; const c = WDEV('回報', '三個窗口'); c.tag = '點我回報'; return { l3, core, sw: EDGE(), e1: DESK('教室電腦', NET + '.60'), e2: c } })(),
-      fixed: [UPLINK, L3CORE(), { a: 'core.s2', b: 'sw.s1', cls: 'fixed', occupy: true, msg: '核心經副控到教室端（畫面省略副控），不用動。' }],
+      devs: (() => { const l3 = L3(), core = CORE(); l3.tap = core.tap = true; const c = WDEV('回報', '三個窗口'); c.tag = '點我回報'; return { l3, core, aggr: AGGR('B'), sw: EDGE(), e1: DESK('教室電腦', NET + '.60'), e2: c } })(),
+      fixed: SWFIX(),
       lay: {
-        wide: { W: 900, H: 540, net: { x: 226, y: 44 }, rack: { x: 40, y: 98, w: 372, h: 424 }, pos: { l3: [60, 112], core: [60, 214], sw: [60, 320], e1: [500, 140], e2: [700, 140] } },
-        narrow: { W: 440, H: 620, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 320 }, pos: { l3: [54, 108], core: [54, 212], sw: [54, 316], e1: [60, 470], e2: [280, 470] } }
+        wide: { W: 900, H: 540, net: { x: 226, y: 44 }, rack: { x: 40, y: 98, w: 372, h: 424 }, pos: { l3: [60, 108], core: [60, 208], aggr: [60, 308], sw: [60, 408], e1: [500, 140], e2: [700, 140] } },
+        narrow: { W: 440, H: 700, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 420 }, pos: { l3: [54, 108], core: [54, 208], aggr: [54, 308], sw: [54, 408], e1: [60, 540], e2: [280, 540] } }
       },
       need: [], allow: () => null,
       CASES: {
         out: { alarm: `對外設備離線：${SCH.abbr}-L3 對外埠；Radar 異常`, gw: true, ext: false, hop: '第 1 站之後', who: '教育網路中心', why: '校端 L3 通、出了學校就不通，而且校內設備都在線。對外線路與骨幹由教育網路中心處理。', reply: '收到，全校對外不通、校端 L3 正常、斷在第 1 站之後。我們查到貴校對外線路異常，已派工。' },
-        core: { alarm: `離線：${SCH.abbr}-CORE；離線：${SCH.abbr}-AGG-A、AGG-B 及其下 18 台教室端`, gw: false, ext: false, hop: '第 1 站就沒有回應', who: '光纖到班維護廠商', why: '核心離線，副控與教室端全部跟著離線，連閘道都 ping 不到。核心是光纖到班案設備，在保固內由光纖到班維護廠商處理。', reply: '收到，核心交換器離線、兩棟副控與教室端跟著離線。工程師 4 小時內到場更換。' },
+        core: { alarm: `離線：${SCH.abbr}-CORE；離線：${SCH.abbr}-AGG-B 及其下 18 台教室端`, gw: false, ext: false, hop: '第 1 站就沒有回應', who: '光纖到班維護廠商', why: '核心離線，副控與教室端全部跟著離線，連閘道都 ping 不到。核心是光纖到班案設備，在保固內由光纖到班維護廠商處理。', reply: '收到，核心交換器離線、兩棟副控與教室端跟著離線。工程師 4 小時內到場更換。' },
         l3: { alarm: `離線：${SCH.abbr}-L3；對外設備離線；Radar 異常。核心、副控、教室端均在線`, gw: false, ext: false, hop: '第 1 站就沒有回應', who: '既有網路維護廠商', why: '校端 L3 本身離線，它底下的核心、副控、教室端都在線，所以是校端 L3 的問題。它是既有設備，由既有網路維護廠商處理，並同時通知教育網路中心。', reply: '收到，校端 L3 路由器離線、校內新設備均在線。工程師今日到場處理。' }
       },
       init() {

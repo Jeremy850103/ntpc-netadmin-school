@@ -6,7 +6,7 @@
       min: 0, max: 5, s2: 'first', firstLabel: '一次就找對', testLabel: '檢查結果',
       intro: '',
       start: '下方終端機有兩張表：校端 L3 的 ARP 表、教室端交換器的 MAC 位址表。先用 IP 找到 MAC，再用 MAC 找到埠，然後點那一埠的線把它拔掉。',
-      devs: { l3: L3(), sw: EDGE(), e1: DESK('設備 ?', '在某間教室'), e2: DESK('設備 ?', '在某間教室'), e3: DESK('設備 ?', '在某間教室'), e4: DESK('設備 ?', '在某間教室'), e5: DESK('設備 ?', '在某間教室') },
+      devs: { ...RACK4(), e1: DESK('設備 ?', '在某間教室'), e2: DESK('設備 ?', '在某間教室'), e3: DESK('設備 ?', '在某間教室'), e4: DESK('設備 ?', '在某間教室'), e5: DESK('設備 ?', '在某間教室') },
       fixed: SWFIX(), lay: L5, need: [], allow: swAllow,
       init() {
         const R = [[NET + '.23', '教務處電腦'], [NET + '.31', '導師電腦'], [NET + '.50', '印表機'], [NET + '.77', '電腦教室 07'], [NET + '.102', '圖書館電腦']];
@@ -53,10 +53,10 @@
         v1: { name: 'VLAN 1 預設', vlan: 1, sw: 'v1', note: '還原', cost: '' }
       },
       noCut: '這一關不用動線，只要設定每個埠的 VLAN。',
-      devs: (() => { const sw = EDGE(); sw.ports.s1.label = 'Trunk'; return { l3: L3(), sw, e1: DESK('行政 1', '人事室電腦'), e2: DESK('教學 1', '教室電腦'), e3: DESK('行政 2', '出納組電腦'), e4: AP('訪客 AP', '給來賓用'), e5: DESK('教學 2', '教室電腦') } })(),
+      devs: (() => { const sw = EDGE(); sw.ports.s1.label = 'Trunk'; return { l3: L3(), core: CORE(), aggr: AGGR('B'), sw, e1: DESK('行政 1', '人事室電腦'), e2: DESK('教學 1', '教室電腦'), e3: DESK('行政 2', '出納組電腦'), e4: AP('訪客 AP', '給來賓用'), e5: DESK('教學 2', '教室電腦') } })(),
       want: { e1: 10, e2: 20, e3: 10, e4: 30, e5: 20 },
       dept: { 10: '行政', 20: '教學', 30: '訪客' },
-      fixed: (() => { const f = SWFIX(); f[1].msg = 'S1 是往副控的 Trunk，要同時載運 VLAN 10、20、30，已經設好了，不用動。'; return f })(),
+      fixed: (() => { const f = SWFIX(); f[3].msg = 'S1 是往副控的 Trunk，要同時載運 VLAN 10、20、30，已經設好了，不用動。'; return f })(),
       lay: L5, need: [], allow: swAllow,
       init() {
         const ps = shuffle([1, 2, 3, 4, 5, 6]).slice(0, 5), ids = ['e1', 'e2', 'e3', 'e4', 'e5'];
@@ -93,7 +93,7 @@
       idle: '按「測試速度」，量三台電腦到雷達主機的下載速度',
       intro: '電腦教室的老師說：「有一台電腦網路特別慢，傳個檔案要等好久，可是它明明連得上。」教室端交換器的埠是 2.5G，電腦網卡 2.5G 或 1G 都正常，連線燈有亮不代表沒問題，這次要看燈的顏色。',
       start: '連線燈綠色是 1G 以上，橘色是只有 100 Mbps。先按「測試速度」，再點電腦查看網卡設定。點線可以拔下來檢查。',
-      devs: { l3: L3(), sw: EDGE(), e1: DESK('電腦 A', '電腦教室'), e2: DESK('電腦 B', '電腦教室'), e3: DESK('電腦 C', '電腦教室') },
+      devs: { ...RACK4(), e1: DESK('電腦 A', '電腦教室'), e2: DESK('電腦 B', '電腦教室'), e3: DESK('電腦 C', '電腦教室') },
       fixed: SWFIX(), lay: L5, need: [], allow: swAllow,
       init() {
         const ids = ['e1', 'e2', 'e3'], i = Math.floor(rnd() * 3), cs = ids.map((id, n) => ({ a: id + '.p', b: 'sw.p' + (n + 1) }));

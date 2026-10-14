@@ -7,7 +7,7 @@
       idle: '五台設備都設定好，按「測試連線」',
       intro: '學校的無線網路有四個名字（SSID），各自通往不同的隔間：教師、學生、訪客、設備。頻段則像車道：2.4 GHz 是鄉間小路，慢又擠，但穿牆能力強、傳得遠；5 GHz 是高速公路，快，但隔一道牆就弱很多。',
       start: '點每一台設備，幫它選 SSID 和頻段。注意設備下方的說明：有的只支援 2.4 GHz，有的離 AP 很遠。',
-      devs: { l3: L3(), sw: EDGE(), e1: LAPTOP('老師筆電', '支援 5 GHz'), e2: WDEV('學生平板', '支援 5 GHz'), e3: WDEV('來賓手機', '來賓自己帶的'), e4: WDEV('舊印表機', '只支援 2.4 GHz'), e5: WDEV('遠端感測器', '隔兩道牆') },
+      devs: { ...RACK4(), e1: LAPTOP('老師筆電', '支援 5 GHz'), e2: WDEV('學生平板', '支援 5 GHz'), e3: WDEV('來賓手機', '來賓自己帶的'), e4: WDEV('舊印表機', '只支援 2.4 GHz'), e5: WDEV('遠端感測器', '隔兩道牆') },
       POOL: {
         t: [{ name: '老師筆電', sub: '支援 5 GHz', lap: 1, band: '5 GHz' }, { name: '老師的舊筆電', sub: '只支援 2.4 GHz', lap: 1, band: '2.4 GHz', why: 'old' }, { name: '老師筆電', sub: '在走廊盡頭的辦公室', lap: 1, band: '2.4 GHz', why: 'far' }],
         s: [{ name: '學生平板', sub: '支援 5 GHz', band: '5 GHz' }, { name: '學生平板', sub: '在隔兩道牆的教室', band: '2.4 GHz', why: 'far' }, { name: '學生筆電', sub: '支援 5 GHz', lap: 1, band: '5 GHz' }],
@@ -59,7 +59,7 @@
       idle: '按「量測訊號」，看每間教室的訊號強度和干擾',
       intro: '三間教室各有一台 2.4 GHz 的 AP，老師都說「訊號有，但常常卡住」。當初安裝的人圖方便，頻道隨手設，有的 AP 還被塞進櫃子裡。光纖到班完工後 AP 會改接教室端的 PoE 埠，這是把位置和頻道一起整理的好時機。',
       start: '先看畫面下方的教室排列，哪幾間相鄰。點 AP 可以改頻道和擺放位置。先按「量測訊號」看現況。',
-      devs: { l3: L3(), sw: EDGE(), e1: AP('教室 A', ''), e2: AP('教室 B', ''), e3: AP('教室 C', '') },
+      devs: { ...RACK4(), e1: AP('教室 A', ''), e2: AP('教室 B', ''), e3: AP('教室 C', '') },
       ROOMS: [{ pairs: [['e1', 'e2'], ['e2', 'e3']], wide: '教室排列：A ｜ B ｜ C（相鄰的會互相干擾）', narrow: '教室排列：A ｜ B ｜ C', ex: '1、6、11，或 1、6、1' }, { pairs: [['e1', 'e3'], ['e3', 'e2']], wide: '教室排列：A ｜ C ｜ B（相鄰的會互相干擾）', narrow: '教室排列：A ｜ C ｜ B', ex: 'A 1、C 6、B 11，或 A 1、C 6、B 1' }, { pairs: [['e1', 'e2'], ['e2', 'e3'], ['e1', 'e3']], wide: 'A、B 相鄰，C 在兩間的正上方：三間兩兩互相干擾', narrow: 'A、B 相鄰，C 在正上方：兩兩干擾', ex: '1、6、11，三間都要不一樣' }],
       fixed: SWFIX(), lay: L5, need: [], allow: swAllow,
       init() {
@@ -141,7 +141,7 @@
       idle: '按「測試連線」會從平板和筆電各開啟校務系統',
       intro: '老師很困惑：「明明在同一間教室、連同一台 AP，為什麼學生的平板可以上網，我的筆電就是不行？」同一台 AP 會發出好幾個 SSID，每個 SSID 通往不同的隔間，規則也不同。',
       start: '點筆電和平板，比較它們連的 SSID 和拿到的 IP。AP 接在教室端交換器的 P1。',
-      devs: (() => { const sw = EDGE(); sw.tap = true; sw.ports.p1.label = 'P1 Trunk'; const lap = LAPTOP('老師的筆電', ''); return { l3: L3(), sw, e1: AP('無線 AP', '發出多個 SSID'), e2: lap, e3: WDEV('學生平板', 'YHPS-Student') } })(),
+      devs: (() => { const sw = EDGE(); sw.tap = true; sw.ports.p1.label = 'P1 Trunk'; const lap = LAPTOP('老師的筆電', ''); return { l3: L3(), core: CORE(), aggr: AGGR('B'), sw, e1: AP('無線 AP', '發出多個 SSID'), e2: lap, e3: WDEV('學生平板', 'YHPS-Student') } })(),
       fixed: SWFIX(), lay: L5, need: [], allow: swAllow,
       init() {
         const f = this.cause = ['guest', 'auth', 'trunk'][Math.floor(rnd() * 3)], d = this.devs.e2;

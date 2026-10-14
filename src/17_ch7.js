@@ -7,7 +7,7 @@
       idle: '按「測試連線」會從報修電腦開啟網頁',
       intro: '',
       start: '照 SOP 由下往上：看連線燈，ipconfig 看 IP，ping 閘道、ping 外面的 IP、ping 網址。哪一步不通，問題就在那一層。所有設備都可以點，畫面上有前任資訊組長留下的交接筆記。',
-      devs: (() => { const l3 = L3(), sw = EDGE(); l3.tap = sw.tap = true; return { l3, sw, e1: DESK('報修電腦', ''), e2: DESK('隔壁電腦', '') } })(),
+      devs: (() => { const l3 = L3(), sw = EDGE(); l3.tap = sw.tap = true; return { l3, core: CORE(), aggr: AGGR('B'), sw, e1: DESK('報修電腦', ''), e2: DESK('隔壁電腦', '') } })(),
       zones: NOTE, fixed: SWFIX(), lay: L5, need: [], allow: swAllow,
       init() {
         const f = this.cause = ['loose', 'vlan', 'pool', 'dns', 'rule'][Math.floor(rnd() * 5)], d = this.devs.e1, n = this.devs.e2, cs = [{ a: 'e1.p', b: 'sw.p1' }, { a: 'e2.p', b: 'sw.p2' }];
@@ -88,16 +88,16 @@
       idle: '做完測試、填好回報內容，按「送出回報」',
       intro: '新北的校園網路有三個報修窗口：光纖到班維護廠商（核心、副控、教室端與光纖）、既有網路維護廠商（校端 L3 與既有設備）、教育網路中心（對外線路與骨幹）。找錯窗口，對方會請你再找別人，多耗半天。這一關的故障隨機落在三者之一。',
       start: '點教室電腦做四項測試，再看智慧網管的告警，判斷問題在哪一層、是誰的設備。點「回報」填寫內容和通報對象。',
-      devs: (() => { const l3 = L3(), core = CORE(); l3.tap = core.tap = true; const c = WDEV('回報', '三個窗口'); c.tag = '點我回報'; return { l3, core, sw: EDGE(), e1: DESK('教室電腦', NET + '.60'), e2: c } })(),
-      fixed: [UPLINK, L3CORE(), { a: 'core.s2', b: 'sw.s1', cls: 'fixed', occupy: true, msg: '核心經副控到教室端（畫面省略副控），不用動。' }],
+      devs: (() => { const l3 = L3(), core = CORE(); l3.tap = core.tap = true; const c = WDEV('回報', '三個窗口'); c.tag = '點我回報'; return { l3, core, aggr: AGGR('B'), sw: EDGE(), e1: DESK('教室電腦', NET + '.60'), e2: c } })(),
+      fixed: SWFIX(),
       lay: {
-        wide: { W: 900, H: 540, net: { x: 226, y: 44 }, rack: { x: 40, y: 98, w: 372, h: 424 }, pos: { l3: [60, 112], core: [60, 214], sw: [60, 320], e1: [500, 140], e2: [700, 140] } },
-        narrow: { W: 440, H: 620, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 320 }, pos: { l3: [54, 108], core: [54, 212], sw: [54, 316], e1: [60, 470], e2: [280, 470] } }
+        wide: { W: 900, H: 540, net: { x: 226, y: 44 }, rack: { x: 40, y: 98, w: 372, h: 424 }, pos: { l3: [60, 108], core: [60, 208], aggr: [60, 308], sw: [60, 408], e1: [500, 140], e2: [700, 140] } },
+        narrow: { W: 440, H: 700, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 420 }, pos: { l3: [54, 108], core: [54, 208], aggr: [54, 308], sw: [54, 408], e1: [60, 540], e2: [280, 540] } }
       },
       need: [], allow: () => null,
       CASES: {
         out: { alarm: `對外設備離線：${SCH.abbr}-L3 對外埠；Radar 異常`, gw: true, ext: false, hop: '第 1 站之後', who: '教育網路中心', why: '校端 L3 通、出了學校就不通，而且校內設備都在線。對外線路與骨幹由教育網路中心處理。', reply: '收到，全校對外不通、校端 L3 正常、斷在第 1 站之後。我們查到貴校對外線路異常，已派工。' },
-        core: { alarm: `離線：${SCH.abbr}-CORE；離線：${SCH.abbr}-AGG-A、AGG-B 及其下 18 台教室端`, gw: false, ext: false, hop: '第 1 站就沒有回應', who: '光纖到班維護廠商', why: '核心離線，副控與教室端全部跟著離線，連閘道都 ping 不到。核心是光纖到班案設備，在保固內由光纖到班維護廠商處理。', reply: '收到，核心交換器離線、兩棟副控與教室端跟著離線。工程師 4 小時內到場更換。' },
+        core: { alarm: `離線：${SCH.abbr}-CORE；離線：${SCH.abbr}-AGG-B 及其下 18 台教室端`, gw: false, ext: false, hop: '第 1 站就沒有回應', who: '光纖到班維護廠商', why: '核心離線，副控與教室端全部跟著離線，連閘道都 ping 不到。核心是光纖到班案設備，在保固內由光纖到班維護廠商處理。', reply: '收到，核心交換器離線、兩棟副控與教室端跟著離線。工程師 4 小時內到場更換。' },
         l3: { alarm: `離線：${SCH.abbr}-L3；對外設備離線；Radar 異常。核心、副控、教室端均在線`, gw: false, ext: false, hop: '第 1 站就沒有回應', who: '既有網路維護廠商', why: '校端 L3 本身離線，它底下的核心、副控、教室端都在線，所以是校端 L3 的問題。它是既有設備，由既有網路維護廠商處理，並同時通知教育網路中心。', reply: '收到，校端 L3 路由器離線、校內新設備均在線。工程師今日到場處理。' }
       },
       init() {

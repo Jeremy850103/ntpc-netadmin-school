@@ -8,7 +8,7 @@
       idle: '按「測試連線」會 ping 8.8.8.8，再開啟 www.google.com',
       intro: '老師說：「網路明明有通，LINE 還能用，可是瀏覽器每個網址都打不開。」電腦上網其實靠的是 IP，我們打的網址要先問 DNS 這個查號台，換成 IP 才連得過去。新北各校的電腦依規定使用教育局指定的 DNS。',
       start: '點「教室電腦」。先用 ping 和 nslookup 找出問題在哪一段，再決定要改什麼設定。',
-      devs: { l3: L3(), sw: EDGE(), e1: DESK('教室電腦', NET + '.60') },
+      devs: { ...RACK4(), e1: DESK('教室電腦', NET + '.60') },
       zones: { wide: [[450, 440, `教育局指定 DNS：${DNS1}`], [450, 462, '備用：8.8.8.8（Google 公用 DNS）']], narrow: [[14, 460, `教育局指定 DNS：${DNS1}`], [14, 482, '備用：8.8.8.8']] },
       fixed: SWFIX(), lay: L5, need: [], allow: swAllow,
       init() { this.devs.e1.cfg = { dns: rnd() < .5 ? '1.2.3.4' : SRV + '.54' }; this.diag = false; this.early = false; return { cables: [{ a: 'e1.p', b: 'sw.p1' }], intro: this.intro } },
@@ -47,7 +47,7 @@
       idle: '按「從校外掃描」，看校外能連到哪些通訊埠',
       intro: '',
       start: '點校端 L3 路由器，逐一決定每個通訊埠要不要對校外開放。先想清楚：這台伺服器有誰需要從校外連進來？點伺服器可以再看一次它的用途。',
-      devs: (() => { const l3 = L3(); l3.tap = true; return { l3, sw: EDGE(), e1: DEST('學校網站', SRV + '.5') } })(),
+      devs: (() => { const l3 = L3(); l3.tap = true; return { l3, core: CORE(), aggr: AGGR('B'), sw: EDGE(), e1: DEST('學校網站', SRV + '.5') } })(),
       zones: { wide: [[450, 440, '80 HTTP：一般網頁　443 HTTPS：加密網頁'], [450, 462, '22 SSH：加密的遠端管理　23 Telnet：不加密的遠端管理'], [450, 484, '3389 遠端桌面']], narrow: [[14, 460, '80 HTTP　443 HTTPS　3389 遠端桌面'], [14, 482, '22 SSH：加密的遠端管理'], [14, 504, '23 Telnet：不加密的遠端管理']] },
       fixed: SWFIX(), lay: L5, need: [], allow: swAllow,
       SC: {
@@ -107,7 +107,7 @@
       idle: '按「測試連線」會從筆電 ping 8.8.8.8，再開啟 www.google.com',
       intro: '老師拿著筆電走過來：「Wi-Fi 明明有連上，訊號滿格，為什麼就是不能上網？」這是學校網管最常聽到的一句話。訊號滿格只代表第一層沒問題，要一層一層往上查。',
       start: '點筆電，先執行 ipconfig /all 看它拿到什麼 IP，再做 ping 測試。DHCP 設定在校端 L3 路由器上，畫面上有前任資訊組長留下的交接筆記。',
-      devs: (() => { const l3 = L3(); l3.tap = true; const lap = LAPTOP('老師的筆電', ''); lap.tag = 'Wi-Fi 已連線，訊號滿格'; return { l3, sw: EDGE(), e1: AP('無線 AP', 'YHPS-Teacher'), e2: lap } })(),
+      devs: (() => { const l3 = L3(); l3.tap = true; const lap = LAPTOP('老師的筆電', ''); lap.tag = 'Wi-Fi 已連線，訊號滿格'; return { l3, core: CORE(), aggr: AGGR('B'), sw: EDGE(), e1: AP('無線 AP', 'YHPS-Teacher'), e2: lap } })(),
       zones: NOTE, fixed: SWFIX(), lay: L5, need: [], allow: swAllow,
       init() {
         const f = this.cause = ['pool', 'dhcpdns', 'manual'][Math.floor(rnd() * 3)], l3 = this.devs.l3, d = this.devs.e2;
@@ -173,7 +173,7 @@
       idle: '按「測試連線」會開啟學校首頁、Google、YouTube',
       intro: '電腦教室的老師說：「好奇怪，學校首頁打得開，可是 Google 和 YouTube 都不行。」能上部分網站，代表線路、IP、閘道基本都通，問題一定在比較上面的幾層。',
       start: '點電腦，用 nslookup 和 tracert 判斷是名稱查不到，還是路被擋住。校內 DNS 伺服器的轉送設定在它自己身上，存取控制規則在校端 L3，畫面上有前任資訊組長留下的交接筆記。',
-      devs: (() => { const l3 = L3(); l3.tap = true; const dns = BOX('校內 DNS 伺服器', SRV + '.53'); dns.tap = true; return { l3, sw: EDGE(), e1: DESK('教室電腦', NET + '.60'), e2: dns } })(),
+      devs: (() => { const l3 = L3(); l3.tap = true; const dns = BOX('校內 DNS 伺服器', SRV + '.53'); dns.tap = true; return { l3, core: CORE(), aggr: AGGR('B'), sw: EDGE(), e1: DESK('教室電腦', NET + '.60'), e2: dns } })(),
       zones: NOTE, fixed: SWFIX(), lay: L5, need: [], allow: swAllow,
       init() {
         const f = this.orig = rnd() < .5 ? 'dns' : 'rule';

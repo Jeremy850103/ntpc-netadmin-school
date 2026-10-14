@@ -196,23 +196,21 @@
       W: 900, H: 540,
       net: { x: 226, y: 44 },
       rack: { x: 40, y: 98, w: 372, h: 424 },
-      pos: { l3: [60, 122], sw: [60, 262], e1: [450, 120], e2: [600, 120], e3: [750, 120], e4: [525, 300], e5: [675, 300] }
+      pos: { l3: [60, 108], core: [60, 208], aggr: [60, 308], sw: [60, 408], e1: [450, 120], e2: [600, 120], e3: [750, 120], e4: [525, 300], e5: [675, 300] }
     },
     narrow: {
-      W: 440, H: 580,
+      W: 440, H: 780,
       net: { x: 220, y: 42 },
-      rack: { x: 34, y: 98, w: 372, h: 214 },
-      pos: { l3: [54, 108], sw: [54, 212], e1: [14, 340], e2: [170, 340], e3: [326, 340], e4: [92, 452], e5: [248, 452] }
+      rack: { x: 34, y: 98, w: 372, h: 420 },
+      pos: { l3: [54, 108], core: [54, 208], aggr: [54, 308], sw: [54, 408], e1: [14, 540], e2: [170, 540], e3: [326, 540], e4: [92, 652], e5: [248, 652] }
     }
   };
-  // 教室端交換器的 S1 是往副控的 10G 上行；這些關卡把副控與核心省略，直接畫到校端 L3
-  const SWFIX = () => [UPLINK, {
-    a: 'l3.s1',
-    b: 'sw.s1',
-    cls: 'fixed',
-    occupy: true,
-    msg: '這條是教室端交換器經副控、核心回到校端 L3 的上行（畫面省略中間兩層），不用動它。'
-  }];
+  // 機櫃四台：校端 L3（Juniper）→ 核心（MikroTik）→ 副控（MikroTik）→ 教室端（Edgecore）
+  const RACK4 = () => ({ l3: L3(), core: CORE(), aggr: AGGR('B'), sw: EDGE() });
+  const CORE_AGG = (msg) => ({ a: 'core.s2', b: 'aggr.s1', cls: 'fixed', occupy: true, msg: msg || '這條是核心往 B 棟副控的骨幹光纖，已經接好了，不用動它。' });
+  const AGG_SW = (msg) => ({ a: 'aggr.s2', b: 'sw.s1', cls: 'fixed', occupy: true, msg: msg || '這條是教室端往副控的 10G 上行光纖，已經接好了，不用動它。' });
+  // 機櫃四台的固定線：對外、L3↔核心、核心↔副控、副控↔教室端
+  const SWFIX = () => [UPLINK, L3CORE(), CORE_AGG(), AGG_SW()];
   const swAllow = (a, b) => {
     const d = [a.split('.')[0], b.split('.')[0]];
     return d.includes('sw') && d.some(x => x[0] === 'e') ? null : '這一關的設備都接在教室端交換器上。'
