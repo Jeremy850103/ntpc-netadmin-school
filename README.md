@@ -2,6 +2,8 @@
 
 新北市政府教育局指導、顯赫資訊股份有限公司製作的校園網路管理互動課程。序章 3 關、七章 36 關、知識卡 26 張，場景為光纖到班案完工後的新北校園網路：教室端交換器（Edgecore ECS4125-10PL）、副控點交換器（MikroTik CRS326）、核心光纖交換器（MikroTik CRS518）、既有校端 L3 路由器（Juniper EX3400）、校內測速主機與智慧網管系統。
 
+線上版本：https://jeremy850103.github.io/ntpc-netadmin-school/
+
 ## 內容
 
 | 章 | 關卡 |
