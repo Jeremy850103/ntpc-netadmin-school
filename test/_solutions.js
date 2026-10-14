@@ -53,7 +53,7 @@ Object.assign(window.__sol, {
   '6-2': (L, D) => Object.keys(D).flatMap(id => [['d', id], ['b', L.O[L.ans(id)]]]).concat([['t']]),
   '6-3': (L, D) => ['e1','e2','e3','e4','e5','e6'].flatMap(id => [['d', id], ['b', L.O[D[id].row[2]]]]).concat([['t']]),
   '6-4': () => [['d','aggr'],['b','比對目前設定與最新備份'],['d','aggr'],['b','還原到最新備份（上週日）'],['t']],
-  '6-5': (L) => ['s1','s2','s3'].flatMap(id => [['d', id], ['b', id === L.bad ? '退化' : '正常']]).concat([['t']]),
+  '6-5': (L) => ['s1','s2','s3'].flatMap(id => [['d', id], ['b', L.ans[id] ? '退化' : '正常']]).concat([['t']]),
   '6-6': (L) => ['l3','sw'].flatMap(id => [['d', id], ...Object.entries(L.GOOD[id]).map(([k, v]) => ['f', k, v]), ['b','關閉']]).concat([['t']]),
   't6': (L, D) => { const gw = D.e1.sub.replace(/\.\d+$/, '.254'); return [['d','e1'],['b','ping 閘道 ' + gw],['d','e1'],['b','ping 8.8.8.8'],['d','e1'],['b','ping 教網 DNS'],['d','e1'],['b','tracert 教網 DNS'],['d','e2'],['f','scope','全校'],['f','gw','通'],['f','dns','不通'],['f','hop','第 ' + L.hop + ' 站之後'],['f','who','教育網路中心'],['b','關閉'],['t']] }
 });

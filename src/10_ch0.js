@@ -204,9 +204,9 @@
         wide: { W: 900, H: 560, net: { x: 226, y: 44 }, rack: { x: 40, y: 98, w: 372, h: 440 }, pos: { l3: [60, 112], core: [60, 212], old: [60, 312], radar: [60, 410] } },
         narrow: { W: 440, H: 560, net: { x: 220, y: 42 }, rack: { x: 34, y: 98, w: 372, h: 440 }, pos: { l3: [54, 112], core: [54, 212], old: [54, 312], radar: [54, 410] } }
       },
-      zones: { wide: [[460, 120, '判斷依據：'], [460, 146, '標籤 L3 ＝校端路由器、CORE ＝核心、L2-nn ＝既有匯聚'], [460, 172, '面板：SFP28／QSFP28 是新核心；ge 埠加 SFP+ 是 Juniper'], [460, 198, 'RADAR ＝校內測速主機，一校一台']], narrow: [] },
+      zones: { wide: [[460, 120, '判斷依據：'], [460, 146, '標籤 L3 ＝校端路由器、CORE ＝核心、L2-nn ＝既有匯聚'], [460, 172, '面板：SFP28／QSFP28 是新核心；ge 埠加 SFP+ 是 Juniper'], [460, 198, 'RADAR ＝雷達，一校一台']], narrow: [] },
       need: [], allow: () => '這一關不用接線。點設備判斷角色。', noCut: '這一關不用動線。',
-      ROLES: ['校端 L3 路由器（既有 Juniper）', '核心光纖交換器（新案 CRS518）', '既有匯聚交換器（D-Link）', '校內測速主機（雷達）'],
+      ROLES: ['校端 L3 路由器（既有 Juniper）', '核心光纖交換器（新案 CRS518）', '既有匯聚交換器（D-Link）', '雷達（測速與校內偵測）'],
       ANS: { l3: 0, core: 1, old: 2, radar: 3 },
       init() {
         for (const id in this.devs) { const d = this.devs[id]; d.pick = -1; d.name = '？'; d.subfn = () => d.pick < 0 ? d.sub : this.ROLES[d.pick].split('（')[0] + ' · ' + d.sub.split(' · ')[1] }
@@ -224,13 +224,13 @@
           lines = ids.map(id => `<span class="${ok(id)?'o':'x'}">${D[id].sub.split(' · ')[1]}：${this.ROLES[D[id].pick]}${ok(id)?'':'　再想想'}</span>`),
           bad = ids.find(id => !ok(id));
         if (!bad) { ids.forEach(id => { D[id].name = D[id].name0 }); build() }
-        return bad ? { ok: false, head: H, lines, msg: { l3: '標籤 L3 代表校端 L3 路由器，面板是 Juniper 的 ge 埠加 SFP+。它是既有設備，光纖到班案不更換。', core: '標籤 CORE、面板全是 SFP28 與 QSFP28、雙電源，是新案的核心光纖交換器。', old: '標籤 L2-01 是既有匯聚交換器的命名，D-Link 48 埠 PoE。它還在服務未施作的區域。', radar: 'RADAR 是校內測速主機，教室電腦用瀏覽器就能測到它。' }[bad] } : { ok: true, head: H, lines }
+        return bad ? { ok: false, head: H, lines, msg: { l3: '標籤 L3 代表校端 L3 路由器，面板是 Juniper 的 ge 埠加 SFP+。它是既有設備，光纖到班案不更換。', core: '標籤 CORE、面板全是 SFP28 與 QSFP28、雙電源，是新案的核心光纖交換器。', old: '標籤 L2-01 是既有匯聚交換器的命名，D-Link 48 埠 PoE。它還在服務未施作的區域。', radar: 'RADAR 是雷達，教室電腦用瀏覽器就能測到它。' }[bad] } : { ok: true, head: H, lines }
       },
       goals: [['四台設備都判斷完', () => ['l3', 'core', 'old', 'radar'].every(id => lvk('rack').devs[id].pick >= 0)]],
       extra: '先看標籤，再看面板埠位',
       passMsg: '過關！機櫃裡每一台設備你都叫得出名字了。',
-      hints: ['標籤的第二段就是角色：L3 是校端路由器、CORE 是核心、L2 是既有匯聚、RADAR 是測速主機。', '看面板：新核心全是 SFP28 光纖埠；Juniper 有 ge 開頭的 RJ45 埠；D-Link 是 48 埠 PoE。', '雷達主機只有一個 RJ45，接在既有交換器上。'],
-      learn: ['新北的設備命名是<strong>學校縮寫-角色或層級-流水號</strong>，智慧網管拓樸圖、報修單、盤點表都用同一套名字。', '光纖到班完工後機櫃裡會並存<strong>既有設備</strong>（校端 L3、D-Link 匯聚）和<strong>新案設備</strong>（核心、副控、教室端），保固與報修窗口不同。', '雷達是每校一台的<strong>校內測速主機</strong>，教室端線路的速率由它量。'],
+      hints: ['標籤的第二段就是角色：L3 是校端路由器、CORE 是核心、L2 是既有匯聚、RADAR 是雷達（測速與校內偵測）。', '看面板：新核心全是 SFP28 光纖埠；Juniper 有 ge 開頭的 RJ45 埠；D-Link 是 48 埠 PoE。', '雷達主機只有一個 RJ45，接在既有交換器上。'],
+      learn: ['新北的設備命名是<strong>學校縮寫-角色或層級-流水號</strong>，智慧網管拓樸圖、報修單、盤點表都用同一套名字。', '光纖到班完工後機櫃裡會並存<strong>既有設備</strong>（校端 L3、D-Link 匯聚）和<strong>新案設備</strong>（核心、副控、教室端），保固與報修窗口不同。', '雷達是每校一台的<strong>雷達</strong>，教室端線路的速率由它量。'],
       tip: '實務經驗：報修時先說設備名稱和 IP，例如「YHPS-AGG-B 10.226.250.12 離線」，教育網路中心和廠商一聽就知道在哪一層。',
       see: ['naming'],
       home: ['到機櫃前把每一台設備的標籤抄下來，對照智慧網管「網路架構」裡的名字，不一樣的記下來請維護廠商更正。']
