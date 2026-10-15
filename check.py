@@ -29,7 +29,7 @@ dup = [k for k, v in gc.items() if v > 1]; nog = [c for c in info['cards'] if c 
 if dup or nog or ghost: bad.append(f'B 知識卡分組 重複{dup} 未分組{nog} 不存在{ghost}')
 print(f'【B】關卡 {len(L)} 關、知識卡 {len(info["cards"])} 張、路線 {len(info["road"])} 關', 'ok' if not [x for x in bad if x.startswith('B')] else 'FAIL')
 # C：文風禁詞（自我評價、辯護式對比、流行語）；教學敘事保留口語
-STYLE_BAD = ['不是口號', '不是示意圖', '誠實', '可辯護', '業界領先', '最佳', '唯一', '獨步', '而不是', '不是只', '並非只', '賦能', '閉環', '抓手', '打法', '痛點', '超強', '革命性', '顛覆', '逐段測速', '校內測速主機', '交換器對交換器']
+STYLE_BAD = ['不是口號', '不是示意圖', '誠實', '可辯護', '業界領先', '最佳', '唯一', '獨步', '而不是', '不是只', '並非只', '賦能', '閉環', '抓手', '打法', '痛點', '超強', '革命性', '顛覆', '校內測速主機', '雷達對交換器', '雷達加裝測速程式']
 texts = src('1*.js'); texts.update(src('80_cards.js'))
 hits = []
 for f, s in texts.items():
